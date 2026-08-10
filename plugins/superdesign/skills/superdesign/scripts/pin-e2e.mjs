@@ -224,6 +224,47 @@ const scenarios = {
     if (folded.some((p) => p.said === mark)) throw new Error('the deleted legacy pin came back')
   },
 
+  // The rail. A popover that shuts on every reload is a popover you reopen once per pin, which is
+  // the whole of "I have to keep clicking": the dev server reloads the page under you and the list
+  // you were working in is gone. Three claims — it docks to the edge at full height, acting on a
+  // row leaves it open, and it is still open after a reload it did not ask for.
+  rail: async (page) => {
+    const mark = `rail fixture ${Date.now()}`
+    await takePin(page, 'aside button >> nth=2', mark)
+
+    const shadow = '#sd-pin-overlay'
+    await page.locator(`${shadow} .chip`).click()
+    const geom = await page.evaluate(() => {
+      const sr = document.querySelector('#sd-pin-overlay').shadowRoot
+      const r = sr.querySelector('.rail').getBoundingClientRect()
+      return { top: r.top, right: Math.round(r.right), h: Math.round(r.height), vw: innerWidth, vh: innerHeight }
+    })
+    if (geom.top !== 0 || geom.right !== geom.vw || geom.h !== geom.vh) {
+      throw new Error(`the rail is not docked: top ${geom.top}, right ${geom.right}/${geom.vw}, height ${geom.h}/${geom.vh}`)
+    }
+    console.log(`  dock    right edge, ${geom.h}px tall`)
+
+    // The act that used to cost the list. `done` rather than `del`, so the pin is still there to
+    // be counted afterwards.
+    const id = await page.evaluate((s) => window.__sdPinOverlay.pins.find((p) => p.said === s)?.id, mark)
+    await clickAndPost(page, await rowButton(page, id, 'dn'), 'done')
+    if (!(await page.locator(`${shadow} .rail`).isVisible())) throw new Error('acting on a row closed the rail')
+    console.log('  act     done, rail still open')
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__sdPinOverlay, null, { timeout: 15000 })
+    await page.evaluate(() => window.__sdPinOverlay.hydrated)
+    await page.waitForTimeout(300)
+    if (!(await page.locator(`${shadow} .rail`).isVisible())) throw new Error('the rail did not survive a reload')
+    console.log('  reload  rail still open')
+
+    // Leave the queue as it was found. A done pin is behind the doneline, which is where the list
+    // stops carrying it — so open that first, or there is no row to delete.
+    await page.locator(`${shadow} .doneline`).click().catch(() => {})
+    await clickAndPost(page, await rowButton(page, id, 'rm'), 'delete')
+    console.log('  clean   fixture deleted')
+  },
+
   // Navigation, on an app that has none to speak of. foji's URL is `/` on every screen, so a screen
   // change is invisible to `location` and visible only in the DOM — which makes it the honest test:
   // if the overlay can tell these two screens apart it can tell any two apart. Three claims, in

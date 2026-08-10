@@ -388,7 +388,7 @@
 
       /* One surface recipe, three users. The blur is what stops a dark slab over a light app from
          reading as a modal — it stays a thing ON the page rather than a thing INSTEAD of it. */
-      .panel, .list, .chip {
+      .panel, .rail, .chip {
         background:var(--s0); border:.5px solid var(--line); border-radius:var(--r);
         box-shadow:var(--shadow); color:var(--t0); font-family:var(--ui);
         -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
@@ -463,7 +463,9 @@
       .chip { position:fixed; right:14px; bottom:14px; z-index:2; pointer-events:auto; display:none;
               align-items:center; gap:8px; padding:7px 12px 7px 10px; border-radius:999px;
               cursor:pointer; user-select:none; font:500 12px/1 var(--ui);
-              transition:transform var(--fast), border-color var(--fast) }
+              transition:transform var(--fast), border-color var(--fast), right var(--fast) }
+      /* Out from under the rail it toggles. Same corner, same gap, measured off the rail's edge. */
+      :host(.railed) .chip { right:340px }
       .chip:hover { transform:translateY(-1px); border-color:rgba(255,255,255,.2) }
       .chip .dot { flex:none; width:7px; height:7px; border-radius:99px; background:var(--a);
                    box-shadow:0 0 0 3px var(--a-soft) }
@@ -525,9 +527,27 @@
         opacity:0; transition:none }
       .box, .tag, .marks { transition:opacity var(--fast) }
 
-      .list { position:fixed; right:14px; bottom:56px; z-index:2; width:344px;
-              max-height:min(56vh,460px); overflow:auto; pointer-events:auto; display:none;
-              margin:0; padding:0 0 5px; list-style:none }
+      /* The rail. It was a popover anchored to the chip, which is the right shape for a thing you
+         open to check something and the wrong one for a thing you WORK in: 56vh of it scrolled,
+         it closed on every screen change, and a triage pass of ten pins is ten reopenings. Figma
+         and onlook both dock the comment list to the edge for the same reason. It floats ABOVE the
+         page rather than pushing it: reflowing the host to make room would change the layout being
+         judged, and the width of the thing under review is most of what is under review. */
+      .rail { position:fixed; top:0; right:0; z-index:2; width:326px; height:100vh;
+              display:none; flex-direction:column; pointer-events:auto;
+              border-radius:0; border-width:0 0 0 .5px }
+      .railhead { flex:none; display:flex; gap:8px; align-items:center; padding:13px 12px 10px;
+                  border-bottom:.5px solid var(--line) }
+      .railhead .rt { flex:none; font:600 11px var(--ui); letter-spacing:.07em;
+                      text-transform:uppercase; color:var(--t1) }
+      .railhead .rn { flex:1; font:400 11px var(--mono); color:var(--t2) }
+      .railhead .rx { flex:none; border:0; background:transparent; padding:2px 5px; cursor:pointer;
+                      border-radius:4px; font:400 12px/1 var(--ui); color:var(--t2);
+                      transition:background var(--fast), color var(--fast) }
+      .railhead .rx:hover { background:var(--s1); color:var(--t0) }
+      /* Inside the rail now, so it carries none of the surface itself — one border, one blur, one
+         shadow, on the rail. */
+      .list { flex:1; min-height:0; overflow:auto; margin:0; padding:0 0 5px; list-style:none }
       .list .grp { position:sticky; top:0; z-index:1; display:flex; gap:8px; align-items:center;
                    padding:9px 12px 6px; background:var(--s0);
                    font:600 10px var(--ui); letter-spacing:.07em; text-transform:uppercase;
@@ -593,7 +613,10 @@
       <textarea rows="2" placeholder="what is wrong with this?"></textarea>
       <footer><span class="count"></span><span class="kb">⏎ to pin · esc</span><button class="commit">pin it</button></footer>
     </div>
-    <ol class="list"></ol>
+    <aside class="rail">
+      <header class="railhead"><span class="rt">pins</span><span class="rn"></span><button class="rx" title="close the rail (the chip reopens it)">✕</button></header>
+      <ol class="list"></ol>
+    </aside>
     <div class="chip"></div>`
 
   const $ = (s) => shadow.querySelector(s)
@@ -606,6 +629,8 @@
   const input = $('textarea')
   const commitBtn = $('.commit')
   const list = $('.list')
+  const rail = $('.rail')
+  const railN = $('.railhead .rn')
   const chip = $('.chip')
   const marks = $('.marks')
   const tip = $('.tip')
@@ -618,7 +643,26 @@
   let editing = null // the id of the pin whose sentence the panel is currently rewriting, or null
   let reaiming = null // the id of the pin the next commit re-points, or null
   let showDone = false // whether the list is showing the pins already marked done
-  let listOpen = false
+  // Whether the rail is docked open. Persisted, because a rail that shuts on every reload is the
+  // popover this stopped being: an HMR update, a route change or a restarted dev server would each
+  // cost the user the click that reopens it, in the middle of the triage pass it exists for.
+  // Storage can throw (a host that blocks it, an origin with no storage at all) — closed is the
+  // safe answer, never a broken overlay.
+  const RAIL_KEY = 'sd-pin-rail'
+  const remember = (v) => {
+    try {
+      localStorage.setItem(RAIL_KEY, v ? '1' : '0')
+    } catch {
+      /* no storage on this origin — the rail is simply per-load */
+    }
+  }
+  let listOpen = (() => {
+    try {
+      return localStorage.getItem(RAIL_KEY) === '1'
+    } catch {
+      return false
+    }
+  })()
   let offline = false
   let lastView = '' // the view key as of the last settled screen change — see onNav
   let justPinned = null // the id whose marker still owes the user an animation, or null
@@ -1011,6 +1055,7 @@
       if (frozen || target || anchor || editing) clear()
       else if (listOpen) {
         listOpen = false
+        remember(false)
         render()
       } else api.toggle()
       return
@@ -1464,8 +1509,14 @@
     chip.title = on ? 'the pins so far · alt-click an element to add one' : 'pinning is off · click to turn it back on'
     chip.style.display = 'flex'
     if (!on) listOpen = false
-    list.style.display = on && listOpen ? 'block' : 'none'
-    if (on && listOpen) renderList()
+    const railed = on && listOpen
+    rail.style.display = railed ? 'flex' : 'none'
+    host.classList.toggle('railed', railed)
+    if (railed) {
+      const done = pins.length - open
+      railN.textContent = `${open} open${done ? ` · ${done} done` : ''}`
+      renderList()
+    }
     placeMarks()
   }
 
@@ -1566,6 +1617,14 @@
       return
     }
     listOpen = !listOpen
+    remember(listOpen)
+    render()
+  })
+  rail.querySelector('.rx').addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    listOpen = false
+    remember(false)
     render()
   })
   // Delegated, so a re-render does not have to re-bind two buttons per row. Inside the shadow root
