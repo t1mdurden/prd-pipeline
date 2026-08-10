@@ -57,10 +57,13 @@ const fold = (lines) => {
       continue
     }
     if (!r.id) {
-      // A key no UUID can collide with, so a legacy pin keeps its slot in document order.
-      const k = ` legacy${legacy++}`
+      // A key no UUID can collide with, so a legacy pin keeps its slot in document order — and it
+      // is stamped onto the record so the report can print an id the overlay will answer to. Keep
+      // this identical to pin.mjs's fold: the two disagreeing is a pin the report names and the
+      // inventory cannot find.
+      const k = `legacy-${legacy++}`
       order.push(k)
-      byId.set(k, r)
+      byId.set(k, { ...r, id: k })
       continue
     }
     const op = r.op ?? 'pin'

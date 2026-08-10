@@ -180,10 +180,14 @@ const fold = (lines) => {
       continue
     }
     if (!r.id) {
-      // A key no UUID can collide with, so a legacy pin keeps its slot in document order.
-      const k = ` legacy${legacy++}`
+      // A key no UUID can collide with, so a legacy pin keeps its slot in document order — and it
+      // is STAMPED onto the record, not just used to file it. Every verb in the inventory addresses
+      // a row by `p.id`; a pin served without one renders four buttons that all return before they
+      // post, so the queue holds rows the UI that shows them cannot edit, close or remove. The key
+      // has to round-trip for a `delete` op to have something to name.
+      const k = `legacy-${legacy++}`
       order.push(k)
-      byId.set(k, r)
+      byId.set(k, { ...r, id: k })
       continue
     }
     const op = r.op ?? 'pin'

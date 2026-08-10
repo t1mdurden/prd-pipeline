@@ -174,6 +174,56 @@ const scenarios = {
     if (after.folded.some((p) => p.id === two)) throw new Error('the deleted pin came back')
   },
 
+  // The pins that predate `id`. `fold` already invents a stable key for a record written before the
+  // overlay minted one — and keeps it, so the row is served with no id at all. Every inventory verb
+  // addresses a row BY id (`row.dataset.id = p.id ?? ''`), so on such a row all four look alive and
+  // all four return before they post: the queue holds pins the UI that shows them cannot remove.
+  // Two claims, and the first is the whole bug: a legacy pin arrives WITH an id, and `del` on it
+  // survives a reload.
+  legacy: async (page) => {
+    const mark = `legacy fixture ${Date.now()}`
+    // Straight into the sink, shaped the way pins were shaped before ids: no `id`, no `op`.
+    await page.evaluate(async (s) => {
+      const base = window.__sdPinSink ?? 'http://127.0.0.1:7332'
+      await fetch(`${base}/__sd_pin`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          said: s,
+          at: new Date().toISOString(),
+          url: location.href,
+          route: location.pathname,
+          identity: { tag: 'div', path: 'body > div' },
+          classes: '',
+          box: { x: 0, y: 0, width: 10, height: 10 },
+          resolved: {},
+        }),
+      })
+    }, mark)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__sdPinOverlay, null, { timeout: 15000 })
+    await page.evaluate(() => window.__sdPinOverlay.hydrated)
+    const seen = await page.evaluate((s) => window.__sdPinOverlay.pins.find((p) => p.said === s) ?? null, mark)
+    if (!seen) throw new Error('the legacy pin never reached the overlay')
+    if (!seen.id) throw new Error('a legacy pin arrived with no id — every verb keys by id, so nothing can address it')
+    console.log(`  legacy  id ${JSON.stringify(seen.id)}`)
+
+    await page.locator('#sd-pin-overlay .chip').click()
+    await clickAndPost(page, await rowButton(page, seen.id, 'rm'), 'delete')
+    console.log(`  del     ${JSON.stringify(mark)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => window.__sdPinOverlay, null, { timeout: 15000 })
+    await page.evaluate(() => window.__sdPinOverlay.hydrated)
+    const folded = await page.evaluate(async () => {
+      const base = window.__sdPinSink ?? 'http://127.0.0.1:7332'
+      return await (await fetch(`${base}/__sd_pins`)).json()
+    })
+    console.log(`  reload  folded ${folded.length}`)
+    if (folded.some((p) => p.said === mark)) throw new Error('the deleted legacy pin came back')
+  },
+
   // Navigation, on an app that has none to speak of. foji's URL is `/` on every screen, so a screen
   // change is invisible to `location` and visible only in the DOM — which makes it the honest test:
   // if the overlay can tell these two screens apart it can tell any two apart. Three claims, in
