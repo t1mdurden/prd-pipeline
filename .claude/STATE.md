@@ -1,4 +1,4 @@
-# STATE — prd-pipeline — rewritten 2026-07-28
+# STATE — prd-pipeline — rewritten 2026-07-28, updated 2026-08-21
 
 ## Goal
 Every skill on this machine either ships in a plugin or symlinks into a git clone, so nothing is a
@@ -8,7 +8,7 @@ hand-copy that rots. Three upstream PRs merged. No skill listed twice.
 - Marketplace manifest fixed and pushed (`8e66c98`). `"source": {"source":"git"}` is not a legal
   plugin source — only `url` and `git-subdir` are. compound-v now uses `url`; silver is out until
   its manifest reaches `master` (silver#2). evidence: `claude plugin validate .` -> "Validation passed".
-- Plugins now: prd-pipeline 1.0.0, compound-v 0.5.0, bad-research 0.1.1. The 0.3.0 -> 0.5.0 jump
+- Plugins now: prd-pipeline 1.0.0, compound-v 0.6.0, bad-research 0.2.2. The 0.3.0 -> 0.5.0 jump
   dropped the folded `compound-v:prd-pipeline`, so installing prd-pipeline closed the gap rather
   than duplicating it. evidence: a fresh `claude -p` skill listing shows `prd-pipeline:prd-pipeline`
   once and no `compound-v:prd-pipeline`.
@@ -52,7 +52,10 @@ hand-copy that rots. Three upstream PRs merged. No skill listed twice.
 - Engine bug found and worked around: `bad funnel-gather` exits 0 but its search fan-out ignores the
   plan and returns junk (Google login pages, an IELTS test). `bad fetch <url>` and `bad search` are
   separately unreliable — `search` reported 15 notes while `research/notes/` held 164 files. File the
-  bug in `LeventySeven/badresearch`, not here.
+  bug in `LeventySeven/badresearch`, not here. **Fixed by 0.3.0** — a live
+  `bad funnel-gather "what is the OKLCH color space" --mode light` on the 0.2.2 plugin returned three
+  on-topic notes (Wikipedia Oklab, atmos.style, Init HTML), no junk. The `search` under-report was
+  never re-measured.
 
 - **workflow-investigation#2 is merged** (`3da308e`, 2026-07-29). The plugin surface is gone from
   that repo — `.claude-plugin/`, `skills/`, `scripts/sync-plugin.sh` — and `npx github:` is again its
@@ -62,15 +65,25 @@ hand-copy that rots. Three upstream PRs merged. No skill listed twice.
   corpus paths resolved from `WI_CORPUS_ROOT` rather than hardcoded. evidence:
   `grep -c 'seventyleven\|/Users/admin' assets/SKILL.md` -> 0.
 
+- **bad-research is on the engine upstream actually ships** (2026-08-21, `5a1aa95`, plugin 0.2.2).
+  It had been vendoring 0.1.0 — a build with no `fetch` and no `assets` — for four months, so the
+  skills carried a hand-written degradation path around a slim CLI, and `bin/bad` only checked
+  whether the venv existed, which pinned this machine to 0.1.0 across every plugin update.
+  Re-vendored from `LeventySeven/badresearch@ba04844` (0.3.0): ultrafast is folded into fast
+  upstream so that skill is gone, the assumption critic is new (21 skills, 17 agents), and the
+  launcher now stamps the engine version and rebuilds when it moves. `scripts/vendor-bad-research.sh`
+  makes the surface a build product — engine verbatim, skills namespaced from the engine's own
+  sources, agents rendered through `bad install` with the build venv's path stripped back out, and
+  the two plugin-only hunks in `plugins/bad-research/patches/`. Run it twice, get the same tree.
+  evidence: `git status --porcelain` empty after a fresh run; `./bin/bad --version` rebuilt
+  0.1.0 -> 0.3.0; `bad doctor -j` -> ok:true, 10 active providers.
+
 ## Next
-1. Merge the two remaining PRs. **Both need the fork+PR path** — see Do not.
-   - `compound-v#9` — carries the founder-distribution grounding + rewrite. On merge, compound-v
-     ships `founder-distribution` and `handoff` as plugin skills, so **delete those two symlinks
-     from `~/.claude/skills/` right after** or they list twice.
-   - `silver#2` — adds silver's plugin manifest to `master`. Only after it merges can silver go back
-     into the prd-pipeline marketplace (dropped in `8e66c98` because `master` has no manifest).
-2. File the `bad` engine bugs upstream in `LeventySeven/badresearch`: `funnel-gather` exits 0 with a
-   junk corpus, and `search` under-reports (15 rows against 164 files on disk).
+1. **silver can go back into the marketplace.** `silver#2` merged on 2026-08-06, so
+   `.claude-plugin/plugin.json` is on `master` now — the reason it was dropped in `8e66c98` is gone.
+   Adding it means one more entry in `.claude-plugin/marketplace.json` and deleting the
+   `~/.claude/skills/silver` symlink so it doesn't list twice.
+2. `compound-v#10` (fix/handoff-which-repo) is still open upstream. Fork+PR path — see Do not.
 
 ## Open decisions
 - The BAD_GUIDE sweep wording in `assets/SKILL.md`. The old repo copy said "two copies, read both",
@@ -93,7 +106,11 @@ bash tests/smoke.sh && bash tests/bundle-consistency.sh && claude plugin validat
   Check with `gh api repos/<owner>/<repo> --jq .permissions` rather than assuming; the old blanket
   "no push to any LeventySeven repo" rule in this file was wrong and cost a round trip.
 - Do not put workflow-investigation in a marketplace. Private, internal repo; npx only.
-- Do not re-vendor compound-v. That is what pinned it at 0.3.0 while upstream reached 0.5.0.
+- Do not re-vendor compound-v. That is what pinned it at 0.3.0 while upstream reached 0.5.0. It is
+  pulled live by `url`, and it can be, because that repo carries its own `.claude-plugin/plugin.json`.
+  bad-research cannot: `LeventySeven/badresearch` ships no plugin manifest and the engine is a Python
+  package that has to be installed, so it is vendored — but through `scripts/vendor-bad-research.sh`,
+  never by hand, and the version in `plugin.json` moves with it.
 - Do not list a plugin whose source repo lacks `.claude-plugin/plugin.json` on its **default
   branch**. A manifest that only exists on an open PR branch is not installable, and
   `claude plugin validate .` will not catch it — it checks the source shape, not that it resolves.
