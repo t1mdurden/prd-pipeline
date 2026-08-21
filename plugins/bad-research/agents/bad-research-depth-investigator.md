@@ -72,7 +72,7 @@ reading of the evidence.
 
 1. **Start with the vault.** Before fetching anything new, read the notes
    the loci-analyst cited as corpus_evidence. Use:
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id1> <id2> <id3> --json`
+   bad note show <id1> <id2> <id3> --json`
    Understand what the corpus already says about your locus.
 
    **Check for structured claims.** If `research/temp/claims-<note-id>.json` files
@@ -89,7 +89,7 @@ reading of the evidence.
    commentary. The suggested_starting_urls are a starting point, not a cap.
 
 3. **Fetch new sources via the fetcher subagent.** Do NOT call
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch` directly. Delegate to `hyperresearch-fetcher` via the
+   bad fetch` directly. Delegate to `hyperresearch-fetcher` via the
    Task tool. Batch requests — one Task call with multiple URLs is cheaper
    than many Task calls with one URL each. When spawning a fetcher:
    - Pass `--tag <corpus_tag>` and an additional `--tag locus-<locus-name>`
@@ -102,7 +102,7 @@ reading of the evidence.
    running web searches. Academic APIs return citation-ranked canonical
    papers; web search returns derivative commentary.
 
-5. **Read the fetched sources.** Use `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id> -j`. Quote
+5. **Read the fetched sources.** Use bad note show <id> -j`. Quote
    the passages that actually move your locus's argument. Do NOT paraphrase
    when a direct quote would be stronger evidence.
 
@@ -112,7 +112,7 @@ reading of the evidence.
    already exists in the vault:
 
    ```bash
-   /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "" --tag locus-<locus-name> --type interim --json
+   bad search "" --tag locus-<locus-name> --type interim --json
    ```
 
    If any results come back, DO NOT create a new note. Instead, either:
@@ -133,11 +133,11 @@ reading of the evidence.
 mkdir -p research/temp
 ```
 
-If `note new` is available (run `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note new --help >/dev/null 2>&1`
+If `note new` is available (run bad note new --help >/dev/null 2>&1`
 or read `research/cli-caps.json` — a slim build may lack it):
 
 ```bash
-/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note new "Interim report — <locus name>" \
+bad note new "Interim report — <locus name>" \
   --tag <corpus_tag> \
   --tag locus-<locus-name> \
   --type interim \

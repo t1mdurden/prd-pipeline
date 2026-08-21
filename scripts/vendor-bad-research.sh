@@ -59,6 +59,11 @@ mkdir -p "${TMP}/proj"
 "${TMP}/venv/bin/bad" install --project "${TMP}/proj" --json >/dev/null
 rm -f "${PLUGIN}"/agents/*.md
 cp "${TMP}/proj/.claude/agents/"*.md "${PLUGIN}/agents/"
+# `bad install` templates the absolute path of the venv it was run from into every
+# agent body. That path is this throwaway venv, so strip it back to the bare command —
+# the plugin puts its own bin/ on PATH, and a baked temp path is dead on arrival.
+perl -pi -e 's{\S*/venv/bin/(bad|badr|hpr|hyperresearch)\b}{$1}g' "${PLUGIN}"/agents/*.md
+! grep -rq '/venv/bin/' "${PLUGIN}/agents" || { echo "a venv path survived in agents/" >&2; exit 1; }
 
 echo "done: $(ls "${PLUGIN}"/skills | wc -l | tr -d ' ') skills, $(ls "${PLUGIN}"/agents | wc -l | tr -d ' ') agents, engine ${VERSION}"
 echo "remember to bump ${PLUGIN}/.claude-plugin/plugin.json"

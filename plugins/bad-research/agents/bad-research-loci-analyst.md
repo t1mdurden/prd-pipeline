@@ -71,7 +71,7 @@ depth packet becomes a weak draft section.
 
 ## Procedure
 
-1. **Load the corpus.** Use `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "" --tag <corpus_tag> --json`
+1. **Load the corpus.** Use bad search "" --tag <corpus_tag> --json`
    to list every note the orchestrator fetched in the step-2 width sweep. If
    the corpus is sparse (<10 notes), tell the parent and stop — you cannot
    identify real loci from a thin corpus.
@@ -85,7 +85,7 @@ depth packet becomes a weak draft section.
    You may still identify convergent loci from your own reading.
 
 2. **Read breadth first.** For each note, read the title + summary + first
-   ~400 chars (use `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id> -j` and truncate). Do NOT read
+   ~400 chars (use bad note show <id> -j` and truncate). Do NOT read
    the full body of every note — you would run out of budget. Read deeply
    only when the title/summary alone cannot tell you whether a note hints at
    a rabbithole.

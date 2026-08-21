@@ -50,7 +50,7 @@ load-bearing claims into sub-assumptions and rate each independently.
    (c) increasing Z + constraining W reduces Y by ~30%.
 
 4. **Verify each sub-assumption** against the vault:
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<keyword>" --tag <vault_tag> -j`
+   bad search "<keyword>" --tag <vault_tag> -j`
    Read the full text of relevant notes. Mark each sub-assumption:
    - `verified`: direct supporting quote found
    - `partial`: indirect or approximate support

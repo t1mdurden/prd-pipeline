@@ -40,7 +40,7 @@ surface ONCE up front, then branch — **degrade, never abort**:
 # file must not kill the probe under `set -e`):
 cat research/cli-caps.json 2>/dev/null || true
 # Otherwise probe directly (exit 0 == present):
-/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch --help >/dev/null 2>&1 && echo fetch_ok || echo fetch_missing
+bad fetch --help >/dev/null 2>&1 && echo fetch_ok || echo fetch_missing
 ```
 
 `fetch` is the ONLY capability that decides this branch — it is the one the
@@ -165,7 +165,7 @@ If you get a browser crash or "failed to launch" error:
 On Windows, ALWAYS prefix commands with `PYTHONIOENCODING=utf-8`:
 
 ```bash
-PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch "<url>" --tag <topic> -j
+PYTHONIOENCODING=utf-8 bad fetch "<url>" --tag <topic> -j
 ```
 
 ### Backlink flag — `--suggested-by`
@@ -174,7 +174,7 @@ When fetching a URL that was referenced by a source you already processed,
 pass `--suggested-by <note-id>` to create the citation chain in the vault:
 
 ```bash
-PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch "<url>" \
+PYTHONIOENCODING=utf-8 bad fetch "<url>" \
   --tag <topic> \
   --suggested-by <source-note-id> \
   --suggested-by-reason "<one-line reason>" \
@@ -189,13 +189,13 @@ If you're fetching a seed source directly from the parent agent's URL list
 For each URL the parent agent gave you:
 
 1. Check if it's already fetched (dedup — a prior fetch records the URL in the note):
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<url>" -j`
+   `PYTHONIOENCODING=utf-8 bad search "<url>" -j`
 
 2. If not already fetched, fetch it:
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch "<url>" --tag <topic> -j`
+   `PYTHONIOENCODING=utf-8 bad fetch "<url>" --tag <topic> -j`
 
 3. After fetching, read the note content:
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <note-id> -j`
+   `PYTHONIOENCODING=utf-8 bad note show <note-id> -j`
 
 4. **Quality check** — read the content and decide:
    - Is this actually relevant to the research topic? If completely off-topic, deprecate it.
@@ -203,7 +203,7 @@ For each URL the parent agent gave you:
    - Is this a duplicate? If so, deprecate the worse copy.
 
    To deprecate, set the note's status to `deprecated`. If `note update` is
-   available, `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note update <note-id> --status deprecated -j`;
+   available, `PYTHONIOENCODING=utf-8 bad note update <note-id> --status deprecated -j`;
    if it is absent (slim build — see *Capability detection*), `Read`
    `research/notes/<note-id>.md` and `Edit` its frontmatter `status:` line to
    `deprecated` instead.
@@ -214,8 +214,8 @@ For each URL the parent agent gave you:
 
 5. If the content is good, write a real summary and add tags. If `note update`
    is available:
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note update <note-id> --summary "<specific summary>" -j`
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note update <note-id> --add-tag <specific-tag> -j`
+   `PYTHONIOENCODING=utf-8 bad note update <note-id> --summary "<specific summary>" -j`
+   `PYTHONIOENCODING=utf-8 bad note update <note-id> --add-tag <specific-tag> -j`
    If `note update` is absent (slim build), `Read` `research/notes/<note-id>.md`
    and `Edit` its frontmatter directly — set the `summary:` line and append the
    tag to the `tags:` list. (`bad search`'s auto-sync re-indexes the edited file,
@@ -293,8 +293,8 @@ those primaries gives the pipeline higher-authority sources to cite.
    - If you have a direct URL from the citation, fetch it with the
      hyperresearch CLI (same commands as Phase 1):
      ```
-     PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<url>" -j   # dedup: already fetched?
-     PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch "<url>" --tag <topic> --suggested-by <note-id-that-cited-it> --suggested-by-reason "cited as primary source" -j
+     PYTHONIOENCODING=utf-8 bad search "<url>" -j   # dedup: already fetched?
+     PYTHONIOENCODING=utf-8 bad fetch "<url>" --tag <topic> --suggested-by <note-id-that-cited-it> --suggested-by-reason "cited as primary source" -j
      ```
    - If you only have author + title (no URL), use WebSearch to locate it:
      search for `"<author> <title> <year>"` or `"<title> filetype:pdf"`
@@ -302,13 +302,13 @@ those primaries gives the pipeline higher-authority sources to cite.
      - arXiv: `https://arxiv.org/abs/<id>` or search arXiv
      - DOI: `https://doi.org/<doi>` — fetch the DOI URL directly
      - Semantic Scholar: search the API
-   - Once you have the URL, fetch it with `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad fetch` as above.
+   - Once you have the URL, fetch it with bad fetch` as above.
      Always use `--suggested-by` pointing to the note that cited this
      source — this builds the citation chain in the vault graph.
 
 3. **Process each discovered source** with the same full procedure as
-   Phase 1: read the note content with `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id> -j`,
-   quality check, write summary with `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note update`, add tags,
+   Phase 1: read the note content with bad note show <id> -j`,
+   quality check, write summary with bad note update`, add tags,
    and extract structured claims to `research/temp/claims-<note-id>.json`.
    (On a slim build, read with `Read research/notes/<id>.md` and curate by
    `Edit`-ing its frontmatter, per *Capability detection* — same as Phase 1.)

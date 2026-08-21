@@ -43,7 +43,7 @@ analyst, fetch new sources, or move on.
   this specific research_query, not a generic abstract.
 - **source_note_id**: the vault note id of the source you will analyze
   (e.g., `confronting-capital-punishment-in-china-wikipedia`). You
-  will call `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <source_note_id> -j` to read the
+  will call bad note show <source_note_id> -j` to read the
   full body.
 - **output_path**: the markdown file path where you write the analysis
   body BEFORE calling `note new --body-file` (e.g.,
@@ -55,14 +55,14 @@ analyst, fetch new sources, or move on.
 
 1. **Check for an existing analysis.** Before writing anything, search:
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "" --tag <vault_tag> --type source-analysis --json
+   PYTHONIOENCODING=utf-8 bad search "" --tag <vault_tag> --type source-analysis --json
    ```
    Then filter for any note whose body contains `[[<source_note_id>]]`.
    If one exists, report back to the parent — do NOT duplicate.
 
 2. **Read the source.** Pull the full body:
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <source_note_id> -j
+   PYTHONIOENCODING=utf-8 bad note show <source_note_id> -j
    ```
    Hold the full body in your context. Sonnet 1M lets you read up to
    roughly 750K words before truncation matters. If the source exceeds
@@ -111,10 +111,10 @@ analyst, fetch new sources, or move on.
 ```
 
 5. **Create the source-analysis note.** If `note new` is available (probe
-   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note new --help >/dev/null 2>&1`, or read
+   `PYTHONIOENCODING=utf-8 bad note new --help >/dev/null 2>&1`, or read
    `research/cli-caps.json` — a slim build may lack it):
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note new "Source Analysis — <short title>" \
+   PYTHONIOENCODING=utf-8 bad note new "Source Analysis — <short title>" \
      --type source-analysis \
      --tag <vault_tag> \
      --tag source-analysis \
