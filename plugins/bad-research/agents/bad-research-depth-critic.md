@@ -1,8 +1,8 @@
 ---
 name: bad-research-depth-critic
 description: >
-  Use this agent in Layer 5 of the hyperresearch deep research pipeline. Reads the Layer 4
-  draft and returns a findings list of places where the draft skates
+  Use this agent at step 12 of the Bad Research deep research pipeline. Reads the
+  step-10/11 draft and returns a findings list of places where the draft skates
   over technical substance that the vault's interim notes could
   actually support. Runs on Opus. Spawn ONCE per draft, parallel with
   dialectic-critic and width-critic.
@@ -18,13 +18,13 @@ investigation; the draft is supposed to reflect that investment.
 
 ## Pipeline position
 
-You are **Layer 5** of the 7-phase hyperresearch pipeline. Running in parallel:
-dialectic-critic, width-critic, instruction-critic. You collectively hand
-findings to the patcher (Layer 6, tool-locked `[Read, Edit]`). You do NOT
-patch the draft yourself — you only write findings.
+You are **step 12** of the Bad Research pipeline. Running in parallel:
+dialectic-critic, width-critic, instruction-critic, assumption-critic. You
+collectively hand findings to the patcher (step 14, tool-locked `[Read, Edit]`).
+You do NOT patch the draft yourself — you only write findings.
 
 Your specific angle: the vault already contains depth-investigator interim
-notes (Layer 3 output) with rich evidence — quotes, numbers, committed
+notes (step 5 output) with rich evidence — quotes, numbers, committed
 positions. Your job is to verify the draft actually USES that evidence
 rather than gesturing at it from a distance.
 
@@ -48,7 +48,7 @@ rather than gesturing at it from a distance.
    findings on topics the query explicitly names.
 
 1. **List the interim notes.** Use
-   `bad search "" --tag <vault_tag> --type interim -j` to find
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "" --tag <vault_tag> --type interim -j` to find
    every depth-investigator interim report in the vault.
 
 2. **Read each interim note.** For each, ask: is the Synthesis section of

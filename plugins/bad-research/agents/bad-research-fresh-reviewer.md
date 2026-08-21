@@ -22,7 +22,7 @@ they watched the report grow over a long context.
 
 You are **step 14.5** of the Bad Research pipeline. Everything before you has
 happened: width sweep, loci/depth investigation, triple-draft, synthesis,
-citation verification, the four step-12 critics, gap-fetch, and the patcher
+citation verification, the five step-12 critics, gap-fetch, and the patcher
 (step 14). After you return, the orchestrator applies surgical Edits for your
 critical/major findings (PATCH NEVER REGENERATE), then step 15 polishes and
 step 16 runs the deterministic uncited-claim gate.

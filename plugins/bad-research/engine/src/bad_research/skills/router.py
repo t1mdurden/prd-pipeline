@@ -27,11 +27,12 @@ tree (2-route consolidation; the former agentic-fast + light bands both map to
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Literal
 
 from bad_research.skills import routing_constants as R  # noqa: N812
 
-Route = Literal["fast", "full", "ultrafast"]
+Route = Literal["fast", "full"]
 QueryShape = Literal["straightforward", "breadth_first", "depth_first"]
 
 # The 3-way Claude Research fan-out-shape taxonomy (research_lead_agent.md:12-29).
@@ -90,6 +91,23 @@ def _explicit_breadth_modality(decomp: dict[str, Any]) -> bool:
     return isinstance(explicit, str) and explicit in R.BREADTH_MODALITIES
 
 
+def _explicit_light_tier(decomp: dict[str, Any]) -> bool:
+    """Whether the decompose step EXPLICITLY declared `pipeline_tier == "light"`.
+
+    Symmetric to `_pipeline_tier_floor_full`: where an explicit `"full"` is a FLOOR
+    (never demote below it), an explicit `"light"` is the model's judgment that the
+    query wants the cheap route — so a mechanical atomic-item COUNT alone must not
+    override it into `full`. This is the signal the router was ignoring: a structured,
+    `pipeline_tier="light"` survey with >6 atomic items (sub_questions + entities) was
+    force-`full`-ed purely on count, making the cheaper tier unreachable for exactly
+    the multi-entity surveys it was designed for (issue #15). The HARD full triggers
+    (time_periods, argumentative, contradiction terms, multi-domain) are untouched and
+    still escalate regardless — only the breadth-only count trigger is relaxed, and
+    only when contestedness is below the floor. A missing pipeline_tier returns False
+    (preserves the depth-favouring default for every fixture that omits the field)."""
+    return decomp.get("pipeline_tier") == "light"
+
+
 def _pipeline_tier_floor_full(decomp: dict[str, Any]) -> bool:
     """Whether the decompose step explicitly declared `pipeline_tier == "full"`.
 
@@ -125,18 +143,52 @@ def contestedness_score(decomp: dict[str, Any]) -> float:
     return max(signals)
 
 
+# time_periods entry `type`s that mark a PUBLICATION date, not a period-pinned
+# primary-source window — a bare publication year must not escalate to the full tier.
+_PUBLICATION_PERIOD_TYPES = frozenset(
+    {"publication-year", "publication", "pub-year", "pub_year", "year"}
+)
+_BARE_YEAR = re.compile(r"\d{4}")
+
+
+def _forces_full_period(entry: Any) -> bool:
+    """True when ONE `time_periods` entry is a PERIOD-PINNED primary-source window
+    (Lens D): a fiscal quarter/year, a filing, a dated event, or a multi-year range —
+    the case where the report must fetch the exact filing for that period.
+
+    A BARE single publication year ("2017", or a dict whose `type` marks it a
+    publication year) is NOT period-pinned — it is merely when a source appeared, and
+    must not escalate a trivial lookup to the full ~2.5h pipeline (over-escalation)."""
+    if isinstance(entry, dict):
+        ptype = str(entry.get("type", "")).strip().lower()
+        if ptype and ptype not in _PUBLICATION_PERIOD_TYPES:
+            return True  # an explicit fiscal / regulatory / event type is period-pinned
+        text = str(entry.get("period", "")).strip()
+    else:
+        text = str(entry).strip()
+    # No fiscal/event type → period-pinned iff the text is not a bare 4-digit year
+    # (quarters "Q3 2024", ranges "1993-2023", months "March 2024", filings all qualify).
+    return bool(text) and not _BARE_YEAR.fullmatch(text)
+
+
+def _period_pinned_time_periods(decomp: dict[str, Any]) -> bool:
+    """True when `time_periods` holds >=1 PERIOD-PINNED window (the Lens-D full-tier
+    trigger). A list of only bare publication years does not qualify."""
+    return any(_forces_full_period(e) for e in (decomp.get("time_periods") or []))
+
+
 def _hard_full_triggers(decomp: dict[str, Any]) -> list[str]:
     """The full-tier triggers that are NON-NEGOTIABLE regardless of modality:
-    Lens-D primaries (time_periods), explicit argumentative format, contradiction
-    terms (source tensions), and multi-domain breadth. These are unchanged by
-    B-5 — only the breadth-only (atomic-count) trigger gains the modality gate."""
+    Lens-D primaries (period-pinned time_periods), explicit argumentative format,
+    contradiction terms (source tensions), and multi-domain breadth. Unchanged by
+    B-5 — only the breadth-only (atomic-count) trigger gains the modality gate; and a
+    bare publication year in time_periods no longer counts (over-escalation fix)."""
     fmt = decomp.get("response_format", "structured")
-    time_periods = decomp.get("time_periods") or []
     contradiction = decomp.get("contradiction_terms") or []
     domains = decomp.get("domains") or []
     reasons: list[str] = []
-    if time_periods:
-        reasons.append("time_periods present (Lens D primaries)")
+    if _period_pinned_time_periods(decomp):
+        reasons.append("period-pinned time_periods present (Lens D primaries)")
     if fmt == "argumentative":
         reasons.append("argumentative response_format (dialectics)")
     if contradiction:
@@ -160,7 +212,14 @@ def _breadth_forces_full(decomp: dict[str, Any]) -> bool:
     over-demotion bug.)"""
     n = _atomic_count(decomp)
     contested = contestedness_score(decomp) >= R.CONTESTEDNESS_FULL_FLOOR
-    if _explicit_breadth_modality(decomp) and not contested:
+    # The raised survey ceiling applies when the decompose step EXPLICITLY signalled a
+    # broad-but-shallow query — via a breadth `modality` OR an explicit
+    # `pipeline_tier == "light"` — and contestedness is below the floor. Both are
+    # explicit model judgments; a mere lexical "best X" inference earns neither (it
+    # falls through to the depth-favouring deep ceiling). issue #15 adds the
+    # pipeline_tier=="light" arm so a model-declared light survey is not force-`full`-ed
+    # on atomic count alone.
+    if (_explicit_breadth_modality(decomp) or _explicit_light_tier(decomp)) and not contested:
         # EXPLICITLY-declared broad-but-shallow curation: breadth alone does not
         # buy adversarial depth, so the raised survey ceiling applies.
         return n > R.ROUTER_SURVEY_MAX_ATOMIC
@@ -182,15 +241,15 @@ def _full_triggers(decomp: dict[str, Any]) -> list[str]:
 
 def classify_route(decomp: dict[str, Any]) -> Route:
     fmt = decomp.get("response_format", "structured")
-    time_periods = decomp.get("time_periods") or []
     contradiction = decomp.get("contradiction_terms") or []
     domains = decomp.get("domains") or []
     multi_domain = len(domains) >= 3
 
-    # FULL: explicit pipeline_tier floor, time_periods, argumentative, contradiction,
-    # multi-domain, or a breadth count that survives the modality gate. UNCHANGED.
+    # FULL: explicit pipeline_tier floor, PERIOD-PINNED time_periods, argumentative,
+    # contradiction, multi-domain, or a breadth count that survives the modality gate.
+    # A bare publication year in time_periods no longer forces full (over-escalation fix).
     if (_pipeline_tier_floor_full(decomp)
-            or time_periods or fmt == "argumentative" or contradiction
+            or _period_pinned_time_periods(decomp) or fmt == "argumentative" or contradiction
             or multi_domain or _breadth_forces_full(decomp)):
         return "full"
 
@@ -208,11 +267,15 @@ def route_reason(decomp: dict[str, Any]) -> str:
     if route == "full":
         triggers = _full_triggers(decomp)
         return "full: " + ("; ".join(triggers) if triggers else "complex query")
-    # FAST: call out when an EXPLICIT broad-curation modality spared a high-breadth
-    # query from full (the B-5 gate) so the rationale line is auditable.
-    if _explicit_breadth_modality(decomp) and n > R.ROUTER_LIGHT_MAX_ATOMIC:
-        return (f"fast: {n} atomic item(s) but explicit {modality} modality / low "
-                f"contestedness — breadth alone does not force full (B-5)")
+    # FAST: call out when an EXPLICIT broad-curation signal spared a high-breadth
+    # query from full (the B-5 / issue-#15 gate) so the rationale line is auditable.
+    if n > R.ROUTER_LIGHT_MAX_ATOMIC:
+        if _explicit_breadth_modality(decomp):
+            return (f"fast: {n} atomic item(s) but explicit {modality} modality / low "
+                    f"contestedness — breadth alone does not force full (B-5)")
+        if _explicit_light_tier(decomp):
+            return (f"fast: {n} atomic item(s) but explicit pipeline_tier=light / low "
+                    f"contestedness — breadth alone does not force full (issue #15)")
     return f"fast: {n} atomic item(s), no full-tier trigger"
 
 
@@ -324,22 +387,51 @@ def shape_reason(decomp: dict[str, Any]) -> str:
                 f"{R.SHAPE_DEPTH_MIN_PERSPECTIVES}-{R.SHAPE_DEPTH_MAX_PERSPECTIVES} "
                 "sequential perspectives on one locus")
     if shape == "breadth_first":
-        k = min(n, R.SHAPE_BREADTH_K_CAP)
-        return (f"breadth_first: {n} independent sub-question(s) ({modality}), "
-                f"K={k} parallel investigators, importance-ordered")
+        cov = fanout_coverage(decomp)
+        base = (f"breadth_first: {n} independent sub-question(s) ({modality}), "
+                f"K={cov['k']} parallel investigators, importance-ordered")
+        if cov["deferred"]:
+            # No silent truncation (issue #36 item 5): say what this pass does
+            # NOT cover, so the run can carry the remainder to the gap waves.
+            base += (f" — covers {cov['k']} of {n} sub-question(s) this pass, "
+                     f"{cov['deferred']} deferred to the gap waves "
+                     f"(cap {cov['cap']})")
+        return base
     return (f"straightforward: {n} atomic item(s), single focused investigation "
             "(1 investigator)")
 
 
-def shape_fanout(decomp: dict[str, Any]) -> dict[str, Any]:
-    """Resolve SHAPE_FANOUT for this decomposition: the arrangement + the concrete
-    investigator count K. For breadth_first, K = min(n_independent_subq, cap)."""
+def fanout_coverage(decomp: dict[str, Any]) -> dict[str, Any]:
+    """Machine-readable fan-out coverage for the classified query shape — the
+    structured twin of `shape_reason`, so an orchestrator can branch on
+    `deferred > 0` instead of parsing prose (issue #36 item 5).
+
+    Keys: `shape`, `arrangement`, `n_subq` (independent sub-questions the
+    decomposition carries), `cap` (the shape's hard fan-out ceiling), `k`
+    (investigators this pass), `deferred` (sub-questions this pass does NOT
+    cover — the gap waves' input).
+
+    Only `breadth_first` can defer: its K is one investigator PER independent
+    sub-question, so anything past `SHAPE_BREADTH_K_CAP` genuinely gets no
+    investigator this pass. `depth_first` runs 2-4 sequential perspectives on the
+    ONE contested locus and `straightforward` runs a single investigation over
+    the whole query — in both, every sub-question is inside the one thing being
+    investigated, so nothing is dropped and `deferred` is 0. `k` is None for
+    `depth_first` because the perspective count is chosen at dispatch inside
+    [SHAPE_DEPTH_MIN_PERSPECTIVES, SHAPE_DEPTH_MAX_PERSPECTIVES].
+    """
     shape = classify_query_shape(decomp)
-    spec = dict(R.SHAPE_FANOUT[shape])
+    n = _n_independent_subq(decomp)
     if shape == "breadth_first":
-        spec["k"] = min(_n_independent_subq(decomp), R.SHAPE_BREADTH_K_CAP)
-    spec["shape"] = shape
-    return spec
+        cap = R.SHAPE_BREADTH_K_CAP
+        k = min(n, cap)
+        return {"shape": shape, "arrangement": "parallel", "n_subq": n,
+                "cap": cap, "k": k, "deferred": max(0, n - k)}
+    if shape == "depth_first":
+        return {"shape": shape, "arrangement": "sequential", "n_subq": n,
+                "cap": R.SHAPE_DEPTH_MAX_PERSPECTIVES, "k": None, "deferred": 0}
+    return {"shape": shape, "arrangement": "single", "n_subq": n,
+            "cap": 1, "k": 1, "deferred": 0}
 
 
 def effort_overrides(effort: str | None) -> dict[str, Any] | None:
@@ -347,7 +439,7 @@ def effort_overrides(effort: str | None) -> dict[str, Any] | None:
     router overrides the orchestrator applies on top of the auto-classified route.
 
     Returns None for an absent/invalid effort (the auto-route is left untouched).
-    The returned dict pins {route, tier, fetchers_max, loci_max, extended_thinking,
+    The returned dict pins {route, fetchers_max, loci_max, extended_thinking,
     single_draft} — OpenAI's 4-level continuum expressed as a host-side config
     (dossier 16 §6.1). This is the wiring for the stub flag in cli/research.py.
     """
@@ -361,8 +453,10 @@ def degrade_order() -> tuple[str, ...]:
     redundancy, then fan-out width, then model tier, then — as the TERMINAL action
     (E10 / STEAL_LIST #6c) — short_circuit_to_synthesis. NEVER the synthesis/grounding
     token budget itself (the 80%-variance core). The orchestrator walks this list when
-    a run approaches its --max-tokens ceiling; the terminal step is taken when
-    should_short_circuit() fires."""
+    a run approaches its --max-tokens ceiling OR its run-level wall-clock deadline; the
+    terminal step is taken when EITHER should_short_circuit() (token, opt-in) or
+    should_short_circuit_wallclock() (wall-clock, always on for `full`) fires. Two
+    independent triggers, one terminal step."""
     return R.DEGRADE_ORDER
 
 
@@ -385,3 +479,36 @@ def should_short_circuit(cumulative_tokens: int, ceiling: int | None) -> bool:
     if not ceiling:   # None or 0 → no opt-in ceiling, never short-circuit
         return False
     return (ceiling - cumulative_tokens) < R.RESERVE_FOR_SYNTHESIS
+
+
+def should_short_circuit_wallclock(
+    elapsed_s: float, deadline_s: float | None = None
+) -> bool:
+    """The RUN-LEVEL wall-clock "compose now" predicate — the SECOND, independent
+    trigger for the same terminal ``short_circuit_to_synthesis`` step (it adds no new
+    degrade step).
+
+    The orchestrator calls this after each retrieval/critic ROUND with the run's
+    elapsed wall-clock (now - the run's start timestamp, written at bootstrap). It
+    returns True when the time left has fallen below the reserved synthesis +
+    grounding window — ``deadline - elapsed < RESERVE_FOR_SYNTHESIS_S`` — at which
+    point the orchestrator stops stepping and jumps to step 10/11 with whatever's
+    gathered, shipping a smaller-corpus grounded report instead of being killed
+    mid-pipeline with its in-flight agents.
+
+    **Why this exists next to `should_short_circuit`:** that twin is opt-in
+    (``--max-tokens``) and needs a cumulative token count no phase accounts for, so on
+    a default `full` run the terminal degrade step was unreachable. Here the deadline
+    DEFAULTS: ``deadline_s=None`` means ``FULL_TIMEOUT_S``, not "no deadline". Elapsed
+    wall-clock is also the one budget the model cannot misreport (the fast route's
+    "loop counters, not model claims" discipline).
+
+    An explicit ``deadline_s <= 0`` is the deliberate opt-OUT (a run that wants no
+    wall-clock net); a positive value overrides the default. The comparison is STRICT,
+    mirroring the token twin: time left exactly equal to the reserve is still enough.
+    """
+    if deadline_s is None:
+        deadline_s = R.FULL_TIMEOUT_S
+    if deadline_s <= 0:   # explicit opt-out — the only way to have no wall-clock net
+        return False
+    return (deadline_s - elapsed_s) < R.RESERVE_FOR_SYNTHESIS_S

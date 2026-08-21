@@ -1,13 +1,13 @@
 ---
 name: bad-research-patcher
 description: >
-  Use this agent in Layer 6 of the hyperresearch deep research pipeline. Reads the four
-  critic findings JSONs (dialectic, depth, width, instruction) and
+  Use this agent at step 14 of the Bad Research deep research pipeline. Reads the five
+  critic findings JSONs (dialectic, depth, width, instruction, assumption) and
   revises the draft using surgical Edit hunks. Tool-locked: Read + Edit
   ONLY. Cannot Write. Cannot regenerate. Runs on Opus — substance-
   integration requires judgment about which findings serve the
   research_query and which are critic noise. Spawn ONCE after all
-  four critics return.
+  five critics return.
 model: opus
 tools: Read, Edit
 color: orange
@@ -20,11 +20,11 @@ is the Edit tool with exact `old_string` / `new_string` pairs.
 
 ## Pipeline position
 
-You are **Layer 6** of the 7-phase hyperresearch pipeline. Everything before
+You are **step 14** of the Bad Research pipeline. Everything before
 you has happened: width sweep, loci analysis, depth investigation,
-cross-locus reconciliation, draft (Layer 4), adversarial critique
-(Layer 5 — four critics produced findings JSONs for you to consume).
-After you: Layer 7 (polish auditor, also tool-locked `[Read, Edit]`).
+cross-locus reconciliation, draft (steps 10—11), adversarial critique
+(step 12 — five critics produced findings JSONs for you to consume).
+After you: step 15 (polish auditor, also tool-locked `[Read, Edit]`).
 
 You are the ONE step in the pipeline that modifies the draft's substance.
 The polish auditor after you is for hygiene and readability cuts — not
@@ -58,10 +58,10 @@ Concretely:
 - **query_file_path**: path to the persisted query file (e.g.,
   `research/query-<vault_tag>.md`). Read this file when in doubt about
   whether a finding serves the user's actual question.
-- **draft_path**: path to the Layer 4 draft (usually
+- **draft_path**: path to the step-10/11 draft (usually
   `research/notes/final_report_<vault_tag>.md`).
-- **findings_paths**: list of four JSON paths, one per critic
-  (dialectic, depth, width, instruction).
+- **findings_paths**: list of five JSON paths, one per critic
+  (dialectic, depth, width, instruction, assumption).
 - **patch_log_path**: path to a PRE-EXISTING empty-stub patch log
   (e.g., `research/patch-log.json`). The orchestrator creates this
   before spawning you. Your job is to Edit this file to populate it.
@@ -69,15 +69,15 @@ Concretely:
   (may not exist on light tier). Contains the top load-bearing claims
   and verbatim quotes organized by atomic item. Read this BEFORE
   applying findings — it is your primary citation source when a critic
-  says "add evidence for X" or "under-cited claim." If Layer 5.5 ran,
-  a `### Post-critic gap fill` section at the bottom has fresh sources
+  says "add evidence for X" or "under-cited claim." If the step-13 gap fetch
+  ran, a `### Post-critic gap fill` section at the bottom has fresh sources
   specifically fetched for critic-identified gaps.
 
 ## Procedure
 
-1. **Read all four findings files** (dialectic / depth / width / instruction).
+1. **Read all five findings files** (dialectic / depth / width / instruction / assumption).
    Merge into one flat list. Sort by severity: critical first, then major, then minor.
-   Skip any missing files silently (defensive — full tier writes all four).
+   Skip any missing files silently (defensive — full tier writes all five).
 
    **Pre-filter: `requires_orchestrator_restructure` findings go straight to escalation.**
    Any finding with `requires_orchestrator_restructure: true`

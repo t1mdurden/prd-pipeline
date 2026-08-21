@@ -26,7 +26,7 @@
       "name": "bad-research",
       "source": "./plugins/bad-research",
       "category": "research",
-      "description": "Deep, multi-source, fully-cited research. Tier-adaptive: a bounded question gets a fast cited answer; a broad or contested one gets the full adversarially-reviewed report with every claim bound to a source. Prompt skills + 16 agents load instantly; the Python `bad` engine self-bootstraps on first use (needs Python 3.11-3.13 and uv or pipx)."
+      "description": "Deep, multi-source, fully-cited research. Tier-adaptive: a bounded question gets a fast cited answer; a broad or contested one gets the full adversarially-reviewed report with every claim bound to a source. Prompt skills + 17 agents load instantly; the Python `bad` engine self-bootstraps on first use (needs Python 3.11-3.13 and uv or pipx)."
     },
     {
       "name": "superdesign",

@@ -68,13 +68,14 @@ After the academic sweep, run web searches for context, news, non-academic angle
 
 ```bash
 {hpr} search "query" --json                # Full-text search
-{hpr} search "query" --tag ml --json       # Filter by tag / status / date / parent
+{hpr} search "query" --tag ml --json       # Filter by tag / type
 {hpr} search "query" --include-body --json # Full-body search, not just titles
+{hpr} search "" --tag ml --json            # List notes by tag (empty query = metadata filter)
 {hpr} note show <id> --json                # Read one note
 {hpr} note show <id1> <id2> <id3> --json   # Batch-read notes in one call
-{hpr} note list --json                     # List all notes with summaries
-{hpr} tags --json                          # Existing tag vocabulary
 ```
+
+The existing tag vocabulary is whatever appears in `search` results — reuse those tags rather than minting near-duplicates.
 
 ### Images, screenshots, and assets
 
@@ -84,10 +85,9 @@ the rendered pixels as a PNG asset bound to the note; resolve it to a real file
 and hand that path to the `Read` tool to transcribe the data.
 
 ```bash
-{hpr} fetch "<url>" --tag <topic> --save-assets -j   # Saves screenshot + top images
-{hpr} assets list --note-id <note-id> --json         # Assets bound to a note (id, type, path)
-{hpr} assets list --type screenshot --json           # Filter by type (screenshot|image|pdf|other)
-{hpr} assets path <asset-id> -j                       # Resolve an asset id -> readable PNG path
+{hpr} assets list --note-id <note-id> --json   # Assets bound to a note (id, type, path)
+{hpr} assets list --type screenshot --json     # Filter by type (screenshot|image|pdf|other)
+{hpr} assets path <asset-id> -j                 # Resolve an asset id -> readable PNG path
 ```
 
 `assets list` reports each asset's integer `id`; `assets path <asset-id>` prints
@@ -95,32 +95,31 @@ the absolute on-disk path (Read it directly).
 
 ### Authenticated crawling
 
-Login-gated content (LinkedIn, Twitter, paywalled news) needs a browser profile. Set up once via `{hpr} setup` or `crwl profiles`. Config in `.hyperresearch/config.toml` under `[web]`: `profile = "research"`, `magic = true`. LinkedIn / Twitter / Facebook / Instagram / TikTok auto-use a visible browser to avoid session kills.
+Login-gated content (LinkedIn, Twitter, paywalled news) needs a browser profile, created out-of-band with the crawl4ai CLI (`crwl profiles`). Config in `.hyperresearch/config.toml` under `[web]`: `profile = "research"`, `magic = true`. LinkedIn / Twitter / Facebook / Instagram / TikTok auto-use a visible browser to avoid session kills.
 
-If a fetch returns a login wall, tell the user to run `{hpr} setup` and create a login profile.
+If a fetch returns a login wall, tell the user to create a `crwl` login profile and set it in `.hyperresearch/config.toml`.
 
 ### Curate after every session
 
 Every research session must end with a curation pass:
 
 ```bash
-{hpr} note list --status draft -j                                        # Find unprocessed notes
+{hpr} search "" -j                                                       # List notes (each result carries its `status`: draft/review/...)
 {hpr} note show <id> -j                                                  # Read the content
 {hpr} note update <id> --summary "<specific summary>" --add-tag <t> -j   # Add summary + tags
+{hpr} note update <id> --status review -j                               # Advance the lifecycle
 {hpr} lint -j                                                            # Find missing tags / summaries / broken links
-{hpr} repair -j                                                          # Auto-fix broken links, rebuild indexes
-{hpr} status -j                                                          # Overall vault health
 ```
 
 Lifecycle: `draft` → `review` → `evergreen` (or `stale` → `deprecated` → `archive` for outdated material).
 
-Summaries must be specific — "Mamba achieves linear-time sequence modeling via selective state spaces" beats "Paper about Mamba". Reuse the existing tag vocabulary (`{hpr} tags -j`) rather than inventing new tags.
+Summaries must be specific — "Mamba achieves linear-time sequence modeling via selective state spaces" beats "Paper about Mamba". Reuse the tag vocabulary visible in `search` results rather than inventing new tags.
 
 ### Key conventions
 
 - Notes live in `research/notes/` as markdown with YAML frontmatter
 - Link notes with `[[note-id]]` syntax
-- After editing `.md` files directly, run `{hpr} sync` to update the index
+- Create notes with `{hpr} fetch` (a URL) or `{hpr} note new` (authored); `search` reads them straight from disk — no separate index step
 - Run `{hpr} --help` for the full command list
 {end_marker}
 """

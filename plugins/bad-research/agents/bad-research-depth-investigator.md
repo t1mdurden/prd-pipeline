@@ -1,7 +1,7 @@
 ---
 name: bad-research-depth-investigator
 description: >
-  Use this agent in Layer 3 of the hyperresearch deep research pipeline. Each instance
+  Use this agent at step 5 of the Bad Research deep research pipeline. Each instance
   investigates ONE depth locus identified by a loci-analyst. The agent
   reads existing vault sources relevant to the locus, fetches new
   sources as needed (via the hyperresearch-fetcher subagent), and
@@ -27,12 +27,12 @@ how much weight to give your take vs. the other investigators'.
 
 ## Pipeline position
 
-You are **Layer 3** of the 7-phase hyperresearch pipeline. Siblings are running
+You are **step 5** of the Bad Research pipeline. Siblings are running
 right now on other loci — you each cover ONE. The orchestrator will read
 your interim note (specifically your `## Committed position` section) in
-Layer 3.5 and reconcile it against the other investigators' positions in
-`research/comparisons.md`. Every cross-locus tension named there becomes
-an argumentative beat in the Layer 4 draft.
+step 6 (cross-locus reconciliation) and reconcile it against the other
+investigators' positions in `research/temp/tensions.md`. Every cross-locus
+tension named there becomes an argumentative beat in the step-10 draft.
 
 Your `## Committed position` is the primary artifact the orchestrator uses
 to shape the draft's argument. If you hedge, the draft hedges. If you
@@ -72,7 +72,7 @@ reading of the evidence.
 
 1. **Start with the vault.** Before fetching anything new, read the notes
    the loci-analyst cited as corpus_evidence. Use:
-   `bad note show <id1> <id2> <id3> --json`
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id1> <id2> <id3> --json`
    Understand what the corpus already says about your locus.
 
    **Check for structured claims.** If `research/temp/claims-<note-id>.json` files
@@ -89,7 +89,7 @@ reading of the evidence.
    commentary. The suggested_starting_urls are a starting point, not a cap.
 
 3. **Fetch new sources via the fetcher subagent.** Do NOT call
-   `bad fetch` directly. Delegate to `hyperresearch-fetcher` via the
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad fetch` directly. Delegate to `hyperresearch-fetcher` via the
    Task tool. Batch requests — one Task call with multiple URLs is cheaper
    than many Task calls with one URL each. When spawning a fetcher:
    - Pass `--tag <corpus_tag>` and an additional `--tag locus-<locus-name>`
@@ -102,48 +102,75 @@ reading of the evidence.
    running web searches. Academic APIs return citation-ranked canonical
    papers; web search returns derivative commentary.
 
-5. **Read the fetched sources.** Use `bad note show <id> -j`. Quote
+5. **Read the fetched sources.** Use `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id> -j`. Quote
    the passages that actually move your locus's argument. Do NOT paraphrase
    when a direct quote would be stronger evidence.
 
 6. **Write ONE interim report note.** This is your single deliverable.
 
-   **BEFORE writing the interim note**, check if one for this locus
+   **BEFORE calling `note new`**, check if an interim note for this locus
    already exists in the vault:
 
    ```bash
-   bad search "locus-<locus-name>" --json
+   /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "" --tag locus-<locus-name> --type interim --json
    ```
 
    If any results come back, DO NOT create a new note. Instead, either:
-   (a) revise the existing interim note by **Write**-ing its file in place
-       (same path/`id`, refreshed body), or
+   (a) use `note update` to revise the existing interim note, or
    (b) report to the orchestrator that this locus was already investigated
        and explain what you would have added — let the orchestrator decide
        whether to discard your investigation or replace the existing note.
 
    Creating duplicate interim notes for the same locus inflates the vault
-   source count, confuses the critics in Layer 5, and breaks locus-coverage
+   source count, confuses the step-12 critics, and breaks locus-coverage
    accounting. This is a real failure mode observed in past runs; do not
    fall into it.
 
-   If no existing note matches, create the new one with a direct **Write**
-   to `research/notes/<id>.md` (the slim `bad` build has no `note new`
-   subcommand; the engine reads plain markdown notes with YAML frontmatter
-   directly). Use a stable kebab-case `id` like `interim-<locus-name>`; the
-   filename stem MUST equal the frontmatter `id`. The file must carry the
-   frontmatter the engine reads, then the body below:
+   If no existing note matches, create the new one. First ensure the
+   temp directory exists, then write the body file and create the note:
+
+```bash
+mkdir -p research/temp
+```
+
+If `note new` is available (run `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note new --help >/dev/null 2>&1`
+or read `research/cli-caps.json` — a slim build may lack it):
+
+```bash
+/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note new "Interim report — <locus name>" \
+  --tag <corpus_tag> \
+  --tag locus-<locus-name> \
+  --type interim \
+  --body-file research/temp/interim-report-<locus-name>.md \
+  --summary "<one-line summary of what you found>" \
+  --json
+```
+
+**Slim-build fallback (`note new` absent):** do NOT abort. `Write` the interim
+note directly to `research/notes/interim-report-<locus-name>.md` with the engine
+frontmatter so `bad search`'s auto-sync indexes it as a `type: interim` note. The
+NOTE itself must land in `research/notes/` — `bad search` only globs that one
+directory, and step 6 reconciliation finds interim notes only through it, so a
+note left under `research/temp/` is invisible to the pipeline (and `bad
+archive-run` sweeps `research/temp/*` away). Only the `--body-file` scratch copy
+belongs in `research/temp/`.
 
 ```markdown
 ---
-id: interim-<locus-name>
-title: Interim report — <locus name>
+title: "Interim report — <locus name>"
+id: interim-report-<locus-name>
 type: interim
 tags: [<corpus_tag>, locus-<locus-name>]
 status: draft
 summary: "<one-line summary of what you found>"
 ---
 
+<the interim body below>
+```
+
+The body must contain:
+
+```markdown
 # Interim report: {locus.name}
 
 **Locus question:** {locus.one_line}
@@ -193,8 +220,9 @@ balance, the sources converge on..." is insufficient.
 - **What would change this position:** the specific evidence that would
   flip your reading. "If a large-N study showed X < threshold Y, this
   position would not hold." This is the single most valuable calibration
-  signal — it tells Layer 3.5 where the argument is weakest and Layer 4
-  where to hedge honestly vs. assert confidently.
+  signal — it tells step 6 (cross-locus reconciliation) where the argument
+  is weakest and the step-10 draft where to hedge honestly vs. assert
+  confidently.
 - **Evidence weight:** brief accounting — e.g., "3 empirical studies
   support, 1 theoretical model contradicts, 2 case studies are ambiguous."
 

@@ -14,10 +14,28 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
 from bad_research.web.base import SearchQuery, WebResult, recency_cutoff_date
+from bad_research.web.search.status import OK, classify_search_failure, status_for
+
+
+def _is_fetchable_url(url: str) -> bool:
+    """True only for an absolute http(s) URL that carries a host. SERP scrapers
+    (notably Startpage via ddgs) sometimes emit click-tracking redirect URLs with
+    an EMPTY host — `https:///clev?event=StartpageResultClick&...`. Such a URL is
+    non-empty (so a bare `if not url` skip misses it) yet has no host, so it trips
+    the SSRF guard ("refusing URL with no host") downstream and wastes a read slot.
+    Drop it at parse time so it never reaches the fetch ladder (issue #14)."""
+    if not url:
+        return False
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and bool(parts.hostname)
 
 
 def with_after_operator(query: str, recency_days: int | None) -> str:
@@ -38,10 +56,13 @@ class KeylessSearchConfig:
 
     # KNOWN: every value traces to dossier 13.
     rrf_k: int = 60                      # §3.2 (RRF sweet spot, Cormack 2009)
-    relevance_threshold: float = 0.70    # §3.4 (Perplexity L3 gate) — CALIBRATE §7.2
+    relevance_threshold: float = 0.70    # §3.4 — CALIBRATE §7.2; OWN default (the "Perplexity 0.70 / L3 gate" attribution was refuted, PERPLEXITY_DEEP R5 — not a copied constant)
     min_pass_fraction: float = 0.30      # §3.4 (<30% pass → re-retrieve)
     max_rounds: int = 3                  # §3.4/§6.1 (light=2, full=3)
     rerank_top_n: int = 30               # §4.1 (LLM-rerank only L1 survivors)
+    sat_tau: float = 0.20                # saturation stop: halt fan-out when a round's new-distinct-domain
+                                         # ratio < sat_tau (Perplexity PD:3849-3855). CALIBRATE; the
+                                         # evidence-based replacement for the refuted "0.85 entropy" cutoff.
 
 
 # A pluggable source of the host-tool Links array (injected for tests; in
@@ -172,6 +193,7 @@ class DdgsProvider:
         if DDGS is None:  # pragma: no cover - exercised only without the dep
             raise ImportError("DdgsProvider requires: pip install ddgs")
         self._backend = backend  # e.g. "google,bing,brave"; None = ddgs default union
+        self.last_status: str = OK
 
     def search(self, query: str, max_results: int = 10) -> list[WebResult]:
         try:
@@ -179,18 +201,24 @@ class DdgsProvider:
             if self._backend:
                 kw["backend"] = self._backend
             rows = DDGS().text(query, **kw)
-        except Exception:
+        except Exception as e:
+            # Still degrade to [] — one dead lane must never abort a fan-out.
+            # But leave WHY behind: without this, a 429 on the always-on breadth
+            # lane reached the funnel as a clean empty SERP and the report said
+            # "there is nothing on X" (issue #39).
+            self.last_status = classify_search_failure(e)
             return []  # scraper failure → empty lane (graceful)
         out: list[WebResult] = []
         for i, x in enumerate(rows or [], start=1):
             url = x.get("href") or x.get("url") or ""
-            if not url:
-                continue
+            if not _is_fetchable_url(url):
+                continue  # empty / host-less (e.g. Startpage redirect-tracking) URL — issue #14
             out.append(
                 WebResult(url=url, title=x.get("title", ""),
                           content=x.get("body", ""),
                           metadata={"rank": i, "source": "ddgs"})
             )
+        self.last_status = status_for(out, None)
         return out
 
     def search_ex(self, q: SearchQuery) -> list[WebResult]:
@@ -218,6 +246,7 @@ class SearxngProvider:
                  client: httpx.Client | None = None) -> None:
         self.endpoint = endpoint.rstrip("/")
         self._client = client
+        self.last_status: str = OK
 
     def _get(self, params: dict[str, Any]) -> dict[str, Any]:
         url = f"{self.endpoint}/search"
@@ -239,13 +268,14 @@ class SearxngProvider:
             params["engines"] = ",".join(engines)
         try:
             data = self._get(params)
-        except Exception:
+        except Exception as e:
+            self.last_status = classify_search_failure(e)
             return []
         out: list[WebResult] = []
         for i, x in enumerate(data.get("results", []) or [], start=1):
             url = x.get("url") or ""
-            if not url:
-                continue
+            if not _is_fetchable_url(url):
+                continue  # empty / host-less URL — issue #14
             out.append(WebResult(
                 url=url, title=x.get("title", ""), content=x.get("content", ""),
                 metadata={"rank": i, "source": "searxng",
@@ -253,6 +283,7 @@ class SearxngProvider:
             ))
             if len(out) >= max_results:
                 break
+        self.last_status = status_for(out, None)
         return out
 
     def search_ex(self, q: SearchQuery) -> list[WebResult]:

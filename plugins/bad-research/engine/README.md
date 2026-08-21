@@ -62,13 +62,24 @@ By default the skill **auto-routes** — a simple, bounded question takes the **
 (a quick cited answer, minutes); a broad or contested one takes the **full**
 adversarially-reviewed pipeline (~1.5–2.5 h). You can steer it:
 
-- **Want a thorough report without the multi-hour wait?** Say *"ultrafast mode"* in your
-  request (or run `bad route --apply --ultrafast`). The **ultrafast** tier is the keyless
-  take on the commercial "Deep Research" button — plan → wide parallel multi-source browse →
-  a long, sectioned, fully-cited report in **5–15 minutes**. If you're just trying Bad
-  Research out, this is the sweet spot.
+- **Want a thorough report without the multi-hour wait?** The **fast** route is the sweet
+  spot — its breadth branch fans out K parallel researchers over a wide multi-source browse,
+  then writes a sectioned, fully-cited answer in minutes. Force it with `bad route --apply
+  --fast` if the auto-router picked `full` and you want the quicker take. If you're just
+  trying Bad Research out, start here.
 - **Dial the effort** with `--effort minimal|low|medium|high` to nudge the route and per-step
   fan-out (`minimal`/`low` bias toward fast; `medium`/`high` toward full).
+- **Dial the throughput** with `bad funnel-gather --concurrency N` (1–16, default 8) — how many
+  provider searches run at once during the search fan-out. Raise it on a fast, tolerant network;
+  lower it if searches start coming back empty.
+
+There is deliberately **no unbounded / "use everything" mode**, and two measured limits are why.
+The search backend is keyless and scraped, so it has no rate-limit contract: past a handful of
+concurrent requests it soft-blocks, and a soft-block returns an empty result list that is
+indistinguishable from "this topic has no sources" — an uncapped fan-out reports its own traffic
+as a research gap. And reading past roughly 80 sources measurably *degrades* synthesis rather
+than improving it, so the read ceiling is a report-quality bound, not a cost-saving one. The
+knobs above give you the throughput control without either failure mode.
 
 On an interactive run the skill announces the chosen route and its rough ETA before it
 commits to a long job (and for `full` it shows the editable plan first), so you're never
@@ -77,6 +88,24 @@ decomposition and shown by that up-front in-skill route announcement — so you 
 route a query takes before any long work starts.
 
 > Want the latest unreleased build? Install from source: `pipx install git+https://github.com/LeventySeven/badresearch.git`
+
+### Updating
+
+Already installed? Upgrade the CLI **and** re-register the skill so both are current:
+
+```bash
+# From PyPI (pipx or uv — whichever you installed with)
+pipx upgrade bad-research      # or: uv tool upgrade bad-research
+bad install                    # refresh the /bad-research skill + agents in ~/.claude
+
+# ...or track the latest source
+pipx install --force git+https://github.com/LeventySeven/badresearch.git
+bad install
+```
+
+`bad install` is idempotent — re-run it any time after upgrading the CLI to pull the newest
+entry skill + agents (the per-step skills refresh lazily on the next `/bad-research` run).
+Confirm with `bad --version`.
 
 ## What it does
 
@@ -89,6 +118,16 @@ sessions. Keyless by design:
 - **Browse** — an agentic observe → act → extract loop driven by a local, keyless headless browser.
 - **Retrieve** — SQLite FTS5/BM25 by default (no model required), with an optional local neural lane.
 - **Ground** — every factual sentence must carry a source citation, and a deterministic ship-gate **blocks** any uncited claim. Fabricated quotes are caught for free by a byte-identity check; the harder paraphrase-faithfulness cases are judged by the host model (an optional `[local]` cross-encoder upgrades this to NLI).
+
+## Reporting engine bugs
+
+An engine/CLI defect — a missing or broken subcommand, a crash, a slim-build capability
+gap — belongs in **this repo's** issue tracker, not in whatever downstream project
+happened to be driving the run. File a fresh issue here with the build version and the
+exact failing command; don't rely on a cross-org `gh issue transfer` to relocate it from
+a downstream repo (transfers across organizations are unreliable and lose the report).
+Keep the bug where the fix lives. This is guidance for **people**: the research agent
+itself only surfaces the defect in its final report, and never files anything on its own.
 
 ## How it works & where the patterns came from
 

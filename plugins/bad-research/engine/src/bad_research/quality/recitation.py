@@ -14,6 +14,16 @@ from bad_research.grounding.gate import Finding, split_sentences, strip_sources_
 # dossier 16 §5.1 — IDEA defaults; tune on real reports (dossier §11 honest gap).
 RECITATION_MAX_NGRAM = 12     # a verbatim run > 12 words = copying
 RECITATION_MAX_OVERLAP = 0.50  # >50% of a sentence's tokens are one contiguous source run
+# The >50%-of-sentence branch degenerates for ultra-short sentences: a 1-word
+# sentence ("Cut.") trivially has a 1-word run that is 100% of its tokens, and a
+# list fragment ("**1.") or "First reason" (a 2-word run) likewise. A run that short
+# is not recitation. Gate the density branch behind a minimum run length so only a
+# substantive contiguous lift (>= this many words) can trip it (issue #19). The
+# floor sits just below the shortest run a real recitation test asserts (a 6-word
+# verbatim sentence), so genuine short-sentence copying still flags while 1-4-word
+# fragments no longer do. The absolute RECITATION_MAX_NGRAM (>12-word) branch is
+# unaffected — a long verbatim run flags regardless of sentence length.
+RECITATION_MIN_RUN_FOR_PCT = 5
 
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 _CITE_TOKEN = re.compile(r"\[\[[^\]]+\]\]|\[\d+\]")
@@ -22,7 +32,11 @@ _CITE_TOKEN = re.compile(r"\[\[[^\]]+\]\]|\[\d+\]")
 # sentence carries a [N] citation — i.e. it IS an attributed direct quote. The
 # exemption is per-RUN, not per-sentence: a sentence that copies a source verbatim
 # OUTSIDE its quotes cannot launder the copy by appending an unrelated "quote" [1].
-_QUOTED_SPAN = re.compile(r'"[^"]+"')
+# Matches a straight ("...") OR a curly ("...") quotation span. The exemption
+# detector must see both: a draft written with smart-quotes ("...") was being flagged
+# even when the verbatim run was an attributed direct quote sitting next to its cite
+# (issue #19, straight-vs-curly mismatch).
+_QUOTED_SPAN = re.compile(r'"[^"]+"|“[^”]+”')
 
 # A-9 carve-out (sibling to the attributed-quote rule): reference / metadata lines
 # inherently repeat source strings (a URL, a title, a citation-list entry) and are
@@ -121,7 +135,12 @@ def recitation_findings(report_md: str, note_bodies: dict[str, str]) -> list[Fin
         for bw in body_words.values():
             run = longest_common_contiguous_run(toks, bw)
             too_long = len(run) > RECITATION_MAX_NGRAM
-            too_dense = len(run) / len(toks) > RECITATION_MAX_OVERLAP
+            # The density branch only fires for a substantive run — a 1-3 word run that
+            # happens to be >50% of a tiny sentence is not recitation (issue #19).
+            too_dense = (
+                len(run) >= RECITATION_MIN_RUN_FOR_PCT
+                and len(run) / len(toks) > RECITATION_MAX_OVERLAP
+            )
             if (too_long or too_dense) and not _run_is_attributed_quote(run, sent):
                 findings.append(
                     Finding(
@@ -142,6 +161,7 @@ def recitation_findings(report_md: str, note_bodies: dict[str, str]) -> list[Fin
 __all__ = [
     "RECITATION_MAX_NGRAM",
     "RECITATION_MAX_OVERLAP",
+    "RECITATION_MIN_RUN_FOR_PCT",
     "longest_common_contiguous_run",
     "recitation_findings",
     "words",

@@ -25,25 +25,36 @@ VENV_DIR="${DATA_DIR}/venv"
 BIN_NAME="$(basename "$0")"          # bad | badr | hyperresearch | hpr — all map to the same app
 TARGET="${VENV_DIR}/bin/${BIN_NAME}"
 
+# A plugin update ships a new engine, but the venv from the last update is still sitting
+# in the data dir. Stamp what we built and rebuild when the vendored engine moves, or the
+# first bootstrap pins this machine to that version forever.
+ENGINE_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "${ENGINE_DIR}/pyproject.toml" | head -1)"
+STAMP="${DATA_DIR}/.engine-version"
+
+current() {
+  [ -x "${TARGET}" ] || return 1
+  [ "$(cat "${STAMP}" 2>/dev/null)" = "${ENGINE_VERSION}" ]
+}
+
 bootstrap() {
   mkdir -p "${DATA_DIR}"
   # Cheap cross-process lock so parallel agents don't race on the first build.
   local lock="${DATA_DIR}/.bootstrap.lock"
   local waited=0
   while ! mkdir "${lock}" 2>/dev/null; do
-    [ -x "${TARGET}" ] && return 0           # another process finished it
+    current && return 0                      # another process finished it
     sleep 1; waited=$((waited+1))
     [ "${waited}" -gt 600 ] && { echo "bad-research: bootstrap timed out waiting on lock" >&2; return 1; }
   done
   # shellcheck disable=SC2064
   trap "rmdir '${lock}' 2>/dev/null || true" RETURN
 
-  [ -x "${TARGET}" ] && return 0             # built while we waited for the lock
+  current && return 0                        # built while we waited for the lock
 
   # The engine requires Python >=3.11,<3.14. uv can fetch a compatible interpreter even when
   # the system default is outside that range; the plain-venv fallback can only use what's here.
   local pyreq="3.13"
-  echo "bad-research: first-run setup — building the deep-research engine (one time)..." >&2
+  echo "bad-research: building the deep-research engine ${ENGINE_VERSION} (one time)..." >&2
   if command -v uv >/dev/null 2>&1; then
     uv venv --python "${pyreq}" "${VENV_DIR}" >&2
     uv pip install --python "${VENV_DIR}/bin/python" "${ENGINE_DIR}" >&2
@@ -57,9 +68,10 @@ bootstrap() {
     echo "             Install 'uv' (recommended) or a Python 3.11-3.13, or proceed with native web search." >&2
     return 127
   fi
+  echo "${ENGINE_VERSION}" > "${STAMP}"
 }
 
-if [ ! -x "${TARGET}" ]; then
+if ! current; then
   bootstrap || exit $?
 fi
 

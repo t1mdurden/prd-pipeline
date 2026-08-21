@@ -30,13 +30,15 @@ Read these inputs:
 
 0. **Branch the fan-out on `query_shape`** (the arrangement step 4 recorded in `research/loci.json`'s `"fanout"` key; Claude Research `research_lead_agent.md:12-29`). The shape is orthogonal to the tier — it decides only how the investigators are *arranged*:
 
-   - **`breadth_first` → PARALLEL.** Spawn K investigators in ONE message (true parallel), **importance-ordered** (highest composite-score locus first), `K = min(n_loci, 6)`. Independent loci, gathered simultaneously. This is the default path (step 1 below).
+   - **`breadth_first` → PARALLEL.** Spawn K investigators in ONE message (true parallel), **importance-ordered** (highest composite-score locus first), `K = min(n_loci, LOCI_MAX)` — `LOCI_MAX` lives in `skills/routing_constants.py` and is currently **6**. Independent loci, gathered simultaneously. This is the default path (step 1 below).
    - **`depth_first` → SEQUENTIAL.** Run **2–4 perspectives on the ONE** highest-impact locus, **one at a time**: spawn perspective 1, wait for its committed position, then spawn perspective 2 with the prior perspective's committed position pasted into its prompt ("here is the position the preceding perspective committed to — extend, challenge, or steelman it"), and so on for 2–4 rounds. Going deep on a single topic from many angles, each building on the last. Do NOT spawn them in parallel — the sequential read of the prior's position is the whole point.
    - **`straightforward` → SINGLE.** Spawn exactly one investigator on the one locus that matters. No ensemble, no sequence.
 
    Absent a `query_shape` (older runs), use the parallel path (step 1).
 
-1. **`breadth_first` / default — Spawn K `bad-research-depth-investigator` subagents in parallel** (ONE message, all Task calls). One per locus with `source_budget > 0`, capped at 6, **importance-ordered**.
+1. **`breadth_first` / default — Spawn K `bad-research-depth-investigator` subagents in parallel** (ONE message, all Task calls). One per locus with `source_budget > 0`, capped at `LOCI_MAX` (currently 6), **importance-ordered**.
+
+   **Carry the deferred list forward.** Read `fanout.coverage` from `research/loci.json` (step 4 writes it). If `deferred` is non-empty, append those names to `research/temp/coverage-gaps.md` under a `## Deferred by the loci cap` heading before spawning, so the gap-fetch and drafting steps can see what was never investigated rather than inferring silence for absence.
 
    **Spawn template** (carries the 7-field delegation contract — the four added
    fields `objective`, `output_shape`, `tools_allowed`, `stop_conditions` appear
@@ -88,12 +90,25 @@ Read these inputs:
      and what was abandoned. Do NOT silently iterate on a dead query line.
 
      CRITICAL: Read the full source text of relevant vault notes (via
-     `hyperresearch note show <id1> <id2> ... -j`) BEFORE writing your
+     `bad note show <id1> <id2> ... -j`) BEFORE writing your
      interim note. Drafting from summaries alone produces paraphrase;
      drafting from full text produces synthesis. Use your source_budget
      to fetch additional sources beyond the width corpus if needed.
 
-     OUTPUT: Write a single interim note via the hyperresearch CLI with
+     <!-- source-quality-signals -->
+     SOURCE-QUALITY NEGATIVE SIGNALS (flag, do NOT silently drop or suppress):
+     as you read each full source, judge it against the Anthropic worker-prompt
+     list and record any that apply as a `source_quality_flags` array on the
+     interim note (the lead reconciles flags downstream — flag, don't suppress):
+     `aggregator` (news aggregator, not the original), `false_authority` (cites
+     authority it lacks), `nameless_source` ("experts say"), `vague_qualifier`
+     ("many"/"often", no specifics), `unconfirmed` (unverified rumor),
+     `marketing_spin` (promotional/sales copy), `speculation` (incl. future-tense
+     "could"/"may" projections stated as things that happened), `cherry_picked`
+     (selective evidence, no counter-data). A flagged source is caveated or
+     corroborated at synthesis, never suppressed.
+
+     OUTPUT: Write a single interim note via the bad CLI with
      type=interim, tags = <vault_tag> + locus-<locus-name>. The note MUST
      end with a "## Committed position" section that takes a SIDE on the
      dialectical question (or a synthesis verdict for non-dialectical
@@ -130,11 +145,11 @@ Read these inputs:
 
 4. **Read the interim notes.** After all return, list them:
    ```bash
-   $HPR search "" --tag <vault_tag> --type interim --json
+   bad search "" --tag <vault_tag> --type interim --json
    ```
    Then batch-read them:
    ```bash
-   $HPR note show <id1> <id2> ... -j
+   bad note show <id1> <id2> ... -j
    ```
    Hold the Committed Position sections in your context — they are the load-bearing input to step 6 (cross-locus reconciliation).
 

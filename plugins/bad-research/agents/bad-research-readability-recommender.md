@@ -24,7 +24,7 @@ recommendations to apply.
 
 You are step 16 of the hyperresearch V8 pipeline — the final analytical
 pass after the polish auditor (step 15). The report has already been:
-- Drafted (step 10, 3 angle-specific drafts)
+- Drafted (step 10, 2 angle-specific drafts)
 - Synthesized (step 11, two-pass synthesizer)
 - Adversarially critiqued (step 12)
 - Gap-filled (step 13)

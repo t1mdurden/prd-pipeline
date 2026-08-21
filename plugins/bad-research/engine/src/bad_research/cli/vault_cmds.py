@@ -150,6 +150,11 @@ def vault_tag_cmd(
 _SCRATCH_NAMES = {
     "scaffold.md",
     "loci.json",
+    # The two loci-analyst instances write these before step 4 merges them into
+    # loci.json. Same lifetime as loci.json — left behind they leak one run's
+    # loci into the next.
+    "loci-a.json",
+    "loci-b.json",
     "comparisons.md",
     "corpus-critic-gaps.json",
     "patch-log.json",
@@ -159,13 +164,47 @@ _SCRATCH_NAMES = {
     "readability-decisions.json",
     "grader-log.json",
     "clarify.json",
+    # Step-0 capability snapshot. Per-run like the rest: a stale {"fetch": false}
+    # left behind by a slim-build run would otherwise pin the NEXT run (on an
+    # upgraded CLI) to the degraded native-fetch path.
+    "cli-caps.json",
 }
 _SCRATCH_PREFIXES = (
     "critic-findings-",
 )
 
 
+def _interrupted_run_tag(research_dir: Path, notes_dir: Path) -> str | None:
+    """Return the newest run's tag when that run never produced a final report.
+
+    A run with `research/notes/final_report_<tag>.md` is finished; one without it
+    was interrupted (a session-limit kill mid-pipeline is the common case) and its
+    scaffold / loci / prompt-decomposition / research/temp/ tree is precisely what
+    the Recovery path in the entry skill reads to resume. Archiving that away is
+    what makes Recovery find nothing, so it needs consent (`--force`).
+
+    Only the NEWEST run is judged: `research/query-*.md` files are namespaced and
+    never archived, so an older abandoned run would otherwise block every future
+    archive. Returns None when no run has reached step 3 yet — there is nothing
+    named to protect at that point.
+    """
+    queries = sorted(
+        (p for p in research_dir.glob("query-*.md") if p.is_file()),
+        key=lambda p: (p.stat().st_mtime, p.name),
+    )
+    if not queries:
+        return None
+    tag = queries[-1].name[len("query-"):-len(".md")]
+    if (notes_dir / f"final_report_{tag}.md").exists():
+        return None
+    return tag
+
+
 def archive_run_cmd(
+    force: bool = typer.Option(
+        False, "--force",
+        help="Archive even when the newest run has no final report (interrupted).",
+    ),
     json_output: bool = typer.Option(False, "--json", "-j", help="Emit JSON"),
 ) -> None:
     """Archive prior-run scratch files into research/runs/archive-<ts>/.
@@ -177,7 +216,9 @@ def archive_run_cmd(
     Final reports (research/notes/final_report_*.md) and canonical query files
     (research/query-*.md) are already namespaced and are left in place.
 
-    No-ops cleanly on a fresh vault — safe to run unconditionally.
+    No-ops cleanly on a fresh vault, and REFUSES (without --force) when the newest
+    run has no final report — that run was interrupted and its scratch is the
+    Recovery path's resume state, not a prior run's leftovers.
     """
     vault = _discover_vault()
     research_dir = vault.research_dir
@@ -204,6 +245,23 @@ def archive_run_cmd(
         data: dict[str, Any] = {
             "archived": False,
             "reason": "nothing to archive",
+            "moved_files": [],
+            "archive_dir": None,
+        }
+        _emit_success(data, json_mode=json_output, vault=str(vault.root))
+        return
+
+    # There IS scratch to move — so make sure it belongs to a FINISHED run.
+    interrupted = None if force else _interrupted_run_tag(research_dir, vault.notes_dir)
+    if interrupted is not None:
+        data = {
+            "archived": False,
+            "reason": (
+                f"run {interrupted} has no final report — it was interrupted, and "
+                "this scratch is its resume state. Resume it (see Recovery in the "
+                "bad-research skill), or re-run with --force for a clean slate."
+            ),
+            "interrupted_run": interrupted,
             "moved_files": [],
             "archive_dir": None,
         }
@@ -245,6 +303,10 @@ def search_cmd(
     top_k: int = typer.Option(20, "--top-k", "-k", help="Max results"),
     include_body: bool = typer.Option(
         False, "--include-body", help="Include each note's full body text in results"
+    ),
+    raw: bool = typer.Option(
+        False, "--raw",
+        help="Return fetched bodies UNFENCED (for gates that match source text).",
     ),
     json_output: bool = typer.Option(False, "--json", "-j", help="Emit JSON"),
 ) -> None:
@@ -321,19 +383,39 @@ def search_cmd(
     # frontmatter-stripped (matching `note show`) so downstream skills get clean
     # evidence text, not raw YAML.
     clean: list[dict[str, Any]] = []
+    any_fenced = False
     for n in results:
         body_path: Path = n["_body_path"]
         item = {k: v for k, v in n.items() if k != "_body_path"}
         if include_body:
             try:
                 from bad_research.core.frontmatter import parse_frontmatter
-                _meta, body_text = parse_frontmatter(body_path.read_text(encoding="utf-8"))
+                meta, body_text = parse_frontmatter(body_path.read_text(encoding="utf-8"))
+                # Same fence as `note show`. This path is NOT decorative: the
+                # step-8 corpus-critic skill runs `bad search … --include-body -j`
+                # and the CLI cheat-sheet advertises it to every agent, so
+                # fencing only `note show` would have left attacker page text
+                # reaching a Bash-holding agent through a shipped path — with
+                # the sibling command's fence making the gap look covered.
+                # parse_frontmatter returns a NoteMeta model, not a dict.
+                src = getattr(meta, "source", None)
+                if src and not raw:
+                    from bad_research.quality.injection import wrap_untrusted
+
+                    body_text = wrap_untrusted(body_text, source_url=str(src),
+                                               include_preamble=False)
+                    any_fenced = True
                 item["body"] = body_text
             except Exception:
                 item["body"] = ""
         clean.append(item)
 
     data = {"results": clean, "count": len(clean), "query": query, "tag": tag, "type": note_type}
+    if include_body and any_fenced:
+        # Preamble ONCE for the whole payload, not per body — see wrap_untrusted.
+        from bad_research.quality.injection import INJECTION_PREAMBLE
+
+        data["untrusted_notice"] = INJECTION_PREAMBLE
     _emit_success(data, json_mode=json_output, count=len(clean), vault=str(vault.root))
 
 
@@ -516,7 +598,8 @@ def fetch_cmd(
 
 _LINT_RULES: dict[str, str] = {
     "wrapper-report": (
-        "Final report exists and has at least one citation marker ([^…] or [Source …])"
+        "Final report exists and has at least one citation marker "
+        "([[note-id]] wikilink, [^…], [Source …], or [N])"
     ),
     "locus-coverage": (
         "research/loci.json exists and every locus id appears in the final report"
@@ -525,14 +608,25 @@ _LINT_RULES: dict[str, str] = {
         "research/scaffold.md exists and contains a non-empty 'User Prompt' section"
     ),
     "patch-surgery": (
-        "research/patch-log.json is valid JSON with a 'hunks' or 'patches' key "
-        "(or absent on light tier)"
+        "research/patch-log.json is valid JSON with the canonical patch-log keys "
+        "(total_findings / applied / skipped / conflicts / orchestrator_escalated; "
+        "legacy hunks/patches also accepted) (or absent on light tier)"
     ),
 }
 
 _ALL_RULES = list(_LINT_RULES)
 
-_CITATION_RE = re.compile(r"\[\^[^\]]+\]|\[Source[^\]]*\]|\[\d+\]", re.IGNORECASE)
+# Citation markers the wrapper-report rule recognises. `[[note-id]]` wikilink is the
+# DOCUMENTED DEFAULT citation_style (bad-research-1-decompose §citation_style), so it
+# MUST count — a report carrying only wikilinks is cited, not uncited (issue #20).
+_CITATION_RE = re.compile(r"\[\[[^\]]+\]\]|\[\^[^\]]+\]|\[Source[^\]]*\]|\[\d+\]", re.IGNORECASE)
+
+# The canonical patch-log schema the step-14 patcher skill mandates (and forbids
+# inventing alternates for). The lint rule must accept this shape, not only the
+# legacy hunks/patches keys (issue #20).
+_PATCH_LOG_CANONICAL_KEYS = frozenset(
+    {"total_findings", "applied", "skipped", "conflicts", "orchestrator_escalated"}
+)
 
 
 def _lint_wrapper_report(research_dir: Path) -> list[dict[str, Any]]:
@@ -618,9 +712,13 @@ def _lint_patch_surgery(research_dir: Path) -> list[dict[str, Any]]:
     except json.JSONDecodeError as exc:
         return [{"severity": "error", "rule": "patch-surgery",
                  "message": f"research/patch-log.json is not valid JSON: {exc}"}]
-    if not isinstance(data, dict) or not (data.get("hunks") or data.get("patches")):
+    has_canonical = isinstance(data, dict) and bool(_PATCH_LOG_CANONICAL_KEYS & data.keys())
+    has_legacy = isinstance(data, dict) and bool(data.get("hunks") or data.get("patches"))
+    if not (has_canonical or has_legacy):
         issues.append({"severity": "warning", "rule": "patch-surgery",
-                       "message": "patch-log.json lacks 'hunks' or 'patches' key"})
+                       "message": ("patch-log.json lacks the canonical patch-log keys "
+                                   "(total_findings/applied/skipped/conflicts/"
+                                   "orchestrator_escalated) or legacy hunks/patches")})
     return issues
 
 
@@ -688,7 +786,42 @@ note_app = typer.Typer(
 )
 
 
-def _read_one_note(vault: Vault, note_id: str) -> dict[str, Any]:
+def _fence_if_fetched(note: Any, *, raw: bool) -> str:
+    """Fence a FETCHED page body as untrusted before it reaches an agent.
+
+    This is the one seam all 16 agents already go through to read a source, so
+    fencing here covers every one of them — and every agent added later —
+    instead of pasting a prose warning into each prompt constant, where it
+    silently rots the next time an agent is added (15 of 16 lacked it).
+
+    Only notes carrying a `source` URL are fenced: those are attacker-controlled
+    page text. Agent-authored interim notes (drafts, digests, critic findings)
+    are our own content and stay clean, so the fence keeps meaning something.
+
+    `raw=True` is reserved for programmatic consumers that match against source
+    text. (Today's gates do not reach this seam — the recitation map is built
+    from `bad search` and verify-citations reads `research/notes/*.md` directly
+    — so the flag exists so that fencing can never silently corrupt a future
+    text-matching consumer, not because one calls it now.)
+    """
+    body = note.body or ""
+    if raw:
+        return body
+    # `NoteMeta` has no `url` field and ignores extras, so `source` is the only
+    # signal — both write paths (vault_cmds `note new`, funnel/filter) set it.
+    source_url = getattr(note.meta, "source", None)
+    if not source_url:
+        return body
+    from bad_research.quality.injection import wrap_untrusted
+
+    # Markers only. The ~700-char preamble is emitted ONCE per envelope by the
+    # caller: prefixing it to every body pushed the real source text past the
+    # read window of any agent told to truncate (the step-4 loci-analyst reads
+    # "the first ~400 chars", which the preamble alone would entirely fill).
+    return wrap_untrusted(body, source_url=str(source_url), include_preamble=False)
+
+
+def _read_one_note(vault: Vault, note_id: str, *, raw: bool = False) -> dict[str, Any]:
     """Resolve a note by id (notes_dir then temp_dir) and return its payload.
 
     Returns {ok:False, error, id} if the note is missing or unreadable so the
@@ -718,7 +851,7 @@ def _read_one_note(vault: Vault, note_id: str) -> dict[str, Any]:
         "tags": note.meta.tags or [],
         "type": note.meta.type,
         "status": note.meta.status,
-        "body": note.body,
+        "body": _fence_if_fetched(note, raw=raw),
         "path": note.path,
         "word_count": note.word_count,
         "meta": note.meta.model_dump(mode="json", exclude_none=True),
@@ -729,6 +862,10 @@ def _read_one_note(vault: Vault, note_id: str) -> dict[str, Any]:
 def note_show_cmd(
     note_ids: list[str] = typer.Argument(..., help="One or more note ids (stems of the .md files)"),
     json_output: bool = typer.Option(False, "--json", "-j", help="Emit JSON"),
+    raw: bool = typer.Option(
+        False, "--raw",
+        help="Return fetched bodies UNFENCED (for gates that match source text).",
+    ),
 ) -> None:
     """Show one or more vault notes by id.
 
@@ -736,6 +873,10 @@ def note_show_cmd(
     id, parses frontmatter, and emits the canonical Envelope with
     `data.notes` — a list of per-note payloads {id, title, tags, type, status,
     body, path, word_count, meta}. Exits non-zero if ANY requested id is missing.
+
+    A note carrying a `source` URL is FETCHED page text — attacker-controlled —
+    so its body is fenced with the untrusted-content preamble before it reaches
+    an agent. Pass `--raw` to get the unfenced body for programmatic matching.
     """
     from bad_research.core.vault import VaultError
 
@@ -745,10 +886,16 @@ def note_show_cmd(
         _emit_error(str(exc), json_mode=json_output, code="NO_VAULT")
         raise typer.Exit(code=1) from exc
 
-    notes = [_read_one_note(vault, nid) for nid in note_ids]
+    notes = [_read_one_note(vault, nid, raw=raw) for nid in note_ids]
     any_missing = any(not n["ok"] for n in notes)
 
     data = {"notes": notes, "count": len(notes)}
+    # Preamble ONCE per envelope, not per body — the bodies carry only the
+    # BEGIN/END markers so a truncating reader still reaches real source text.
+    if not raw and any("<BEGIN UNTRUSTED CONTENT>" in str(n.get("body", "")) for n in notes):
+        from bad_research.quality.injection import INJECTION_PREAMBLE
+
+        data["untrusted_notice"] = INJECTION_PREAMBLE
     if any_missing:
         if json_output:
             env = envelope_error("one or more notes not found", code="NOTE_NOT_FOUND")
@@ -760,3 +907,124 @@ def note_show_cmd(
         raise typer.Exit(code=1)
 
     _emit_success(data, json_mode=json_output, count=len(notes), vault=str(vault.root))
+
+
+@note_app.command("new")
+def note_new_cmd(
+    title: str = typer.Argument(..., help="Note title"),
+    tag: list[str] = typer.Option(None, "--tag", "--add-tag", help="Tag(s) to attach (repeatable)"),
+    note_type: str = typer.Option("note", "--type", help="Note type (e.g. interim, source-analysis)"),
+    body: str = typer.Option("", "--body", help="Inline note body markdown"),
+    body_file: str = typer.Option(None, "--body-file", help="Read the body from this file ('-' = stdin)"),
+    note_id: str = typer.Option(None, "--id", help="Explicit note id (default: slug of the title)"),
+    summary: str = typer.Option(None, "--summary", help="One-line summary for the frontmatter"),
+    status: str = typer.Option("draft", "--status", help="Lifecycle status (draft|review|evergreen|...)"),
+    source: str = typer.Option(None, "--source", help="Source URL recorded in frontmatter"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Emit JSON"),
+) -> None:
+    """Create a new vault note (markdown + frontmatter) under research/notes/.
+
+    The programmatic counterpart to `bad fetch` (which grounds a URL) — used by the
+    depth-investigator / source-analyst subagents to persist interim and
+    source-analysis notes. Returns the canonical Envelope with
+    `data` = {note_id, path, title, type, status}.
+    """
+    import sys
+
+    from bad_research.core.note import write_note
+    from bad_research.core.vault import VaultError
+
+    try:
+        vault = _discover_vault()
+    except VaultError as exc:
+        _emit_error(str(exc), json_mode=json_output, code="NO_VAULT")
+        raise typer.Exit(code=1) from exc
+
+    note_body = body
+    if body_file:
+        try:
+            note_body = sys.stdin.read() if body_file == "-" else Path(body_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            _emit_error(f"cannot read --body-file {body_file!r}: {exc}",
+                        json_mode=json_output, code="BODY_FILE_ERROR")
+            raise typer.Exit(code=1) from exc
+
+    path = write_note(
+        vault.notes_dir, title, note_body,
+        note_id=note_id, tags=list(tag or []), status=status,
+        note_type=note_type, source=source, summary=summary,
+    )
+    data = {
+        "note_id": path.stem,
+        "path": str(path.relative_to(vault.root)),
+        "title": title,
+        "type": note_type,
+        "status": status,
+    }
+    _emit_success(data, json_mode=json_output, vault=str(vault.root))
+
+
+@note_app.command("update")
+def note_update_cmd(
+    note_id: str = typer.Argument(..., help="Note id (stem of the .md file)"),
+    summary: str = typer.Option(None, "--summary", help="Set/replace the one-line summary"),
+    add_tag: list[str] = typer.Option(None, "--add-tag", "--tag", help="Tag(s) to add (repeatable; deduped)"),
+    status: str = typer.Option(None, "--status", help="Set the lifecycle status"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Emit JSON"),
+) -> None:
+    """Patch a note's frontmatter in place (summary / tags / status).
+
+    Reads research/notes/<id>.md (or research/temp/<id>.md), updates only the
+    fields passed, and rewrites the file with its body untouched — the curation
+    counterpart used by the per-session curation pass and the source-analyst.
+    Returns `data` = {note_id, path, summary, status, tags}.
+    """
+    from bad_research.core.frontmatter import render_note
+    from bad_research.core.note import read_note
+    from bad_research.core.vault import VaultError
+
+    try:
+        vault = _discover_vault()
+    except VaultError as exc:
+        _emit_error(str(exc), json_mode=json_output, code="NO_VAULT")
+        raise typer.Exit(code=1) from exc
+
+    note_path: Path | None = None
+    for d in (vault.notes_dir, vault.temp_dir):
+        candidate = d / f"{note_id}.md"
+        if candidate.exists():
+            note_path = candidate
+            break
+    if note_path is None:
+        _emit_error(f"Note '{note_id}' not found", json_mode=json_output, code="NOTE_NOT_FOUND")
+        raise typer.Exit(code=1)
+
+    note = read_note(note_path, vault.root)
+    meta = note.meta
+    if summary is not None:
+        meta.summary = summary
+    if status is not None:
+        from bad_research.models.note import NoteStatus
+        try:
+            meta.status = NoteStatus(status)
+        except ValueError as exc:
+            valid = ", ".join(s.value for s in NoteStatus)
+            _emit_error(f"invalid status {status!r} (valid: {valid})",
+                        json_mode=json_output, code="INVALID_STATUS")
+            raise typer.Exit(code=1) from exc
+    if add_tag:
+        existing = list(meta.tags or [])
+        for t in add_tag:
+            if t not in existing:
+                existing.append(t)
+        meta.tags = existing
+
+    note_path.write_text(render_note(meta, note.body), encoding="utf-8")
+    data = {
+        "note_id": meta.id or note_id,
+        "path": str(note_path.relative_to(vault.root)),
+        "summary": meta.summary,
+        "status": meta.status,
+        "tags": meta.tags or [],
+    }
+    _emit_success(data, json_mode=json_output, vault=str(vault.root))

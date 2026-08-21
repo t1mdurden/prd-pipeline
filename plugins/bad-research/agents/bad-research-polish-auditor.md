@@ -1,7 +1,7 @@
 ---
 name: bad-research-polish-auditor
 description: >
-  Use this agent in Layer 7 of the hyperresearch deep research pipeline. Reads the patched
+  Use this agent at step 15 of the Bad Research deep research pipeline. Reads the patched
   draft and applies surgical Edit hunks for readability, prompt
   adherence, filler-cutting, redundancy removal, and hygiene (scaffold
   leak, YAML frontmatter leak, etc.). Tool-locked: Read + Edit ONLY.
@@ -19,11 +19,11 @@ You are the polish auditor. Last pass before the draft ships.
 
 ## Pipeline position
 
-You are **Layer 7** — the final step of the 7-phase hyperresearch pipeline.
-Everything is done: width sweep, loci analysis, depth investigation,
-cross-locus reconciliation, the single draft, the four critics, and the
-patcher (Layer 6) have all run. The draft now has the patcher's applied
-findings in it. Your job: final hygiene + readability pass.
+You are **step 15** of the Bad Research pipeline — the final substantive
+hygiene pass before the step-16 readability audit. Everything is done: width
+sweep, loci analysis, depth investigation, cross-locus reconciliation, the
+draft, the critics, and the patcher (step 14) have all run. The draft now has
+the patcher's applied findings in it. Your job: final hygiene + readability pass.
 
 After you finish, the report ships. There is no layer after you. If you
 find a structural problem this hunk pass cannot fix, escalate — do not
@@ -85,8 +85,8 @@ graders and downstream consumers see:
   title. Replace with the text of the first H1 heading in the body
   (strip the leading `# `).
 - `status: draft` — the draft is final; replace with `status: evergreen`.
-- `summary:` starting with pipeline vocabulary like "Hyperresearch final
-  report:" or "Layer 4 output:" — rewrite the summary from the H1 and
+- `summary:` starting with pipeline vocabulary like "Bad Research final
+  report:" or "Step 10 draft output:" — rewrite the summary from the H1 and
   the first committed-claim paragraph. Never let the pipeline's internal
   name appear in the reader-facing summary field.
 - `summary:` ending in `...` (truncated) — rewrite to a complete
@@ -112,7 +112,7 @@ see any of these patterns in reader-facing prose:
 |---|---|
 | `\bLocus\s+\d+\b` | Name the substantive topic that locus covered. E.g., "Locus 3" → "the 500K-passenger threshold question" |
 | `\bTension\s+\d+\b` | Describe the actual dynamic. E.g., "Tension 2" → "the isolation-versus-competition question" |
-| `comparisons\.md` / `research/comparisons\.md` | Delete the file-path reference; preserve the substantive sentence |
+| `tensions\.md` / `research/temp/tensions\.md` (or a legacy `comparisons\.md` leak) | Delete the file-path reference; preserve the substantive sentence |
 | `committed\s+(reading\|position)` | "the argument this report commits to" or just delete and let the following sentence stand |
 | `cross[- ]locus` | "across the evidence clusters" or drop and state the substance directly |
 | `\bwidth\s+corpus\b` | "the literature surveyed" or "the source base" |
@@ -131,7 +131,7 @@ locus", "legal locus"), leave it alone.
 
 **Worked examples** (from real past-run drafts):
 
-- Original: "This is Tension 2 from `research/comparisons.md`, engaged directly: the subsidy-ROI evidence complicates the catchment-leakage thesis."
+- Original: "This is Tension 2 from `research/temp/tensions.md`, engaged directly: the subsidy-ROI evidence complicates the catchment-leakage thesis."
   Rewrite: "The subsidy-ROI evidence complicates the catchment-leakage thesis."
 
 - Original: "Three separate loci converge on the same methodological failure mode."

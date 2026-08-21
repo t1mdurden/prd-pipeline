@@ -25,7 +25,7 @@ Read these inputs:
 - All `research/temp/claims-*.json` files (one per fetched note) — Step 4.0 below pairs these into the contradiction graph
 - `research/temp/coverage-gaps.md` — which atomic items have weak coverage
 
-Survey the corpus: `$HPR search "" --tag <vault_tag> -j` to confirm width sweep is complete.
+Survey the corpus: `bad search "" --tag <vault_tag> -j` to confirm width sweep is complete.
 
 (The contradiction graph + consensus claims are no longer a separate step's input — Step 4.0 below WRITES them from the claims files, and the loci procedure that follows READS them in-context.)
 
@@ -33,7 +33,17 @@ Survey the corpus: `$HPR search "" --tag <vault_tag> -j` to confirm width sweep 
 
 ## Step 4.0 — Contradiction graph (preamble)
 
-**Tier gate for Step 4.0:** SKIP if no `research/temp/claims-*.json` files exist (e.g., fetchers didn't produce them) — fall through to Step 1 below, which prose-scans the corpus instead.
+**Two mechanisms — the prose-scan is the DEFAULT, not a fallback.** The mechanical
+claim-pairing below needs `research/temp/claims-*.json` (one distilled-claims file per note).
+Those are produced ONLY by the legacy hand-dispatched fetcher path. The **preferred**
+step-2 path — `bad funnel-gather` (deterministic, $0, flat-context) — has **no model to
+distill claims, so it does NOT emit `claims-*.json`**. So on the default path these files are
+**absent, and that is EXPECTED, not a failure**: skip the mechanical claim-pairing and use
+**Step 1 below (the prose-scan of the corpus) as the first-class contradiction-finding
+mechanism** — read it as the primary procedure, do it well (it feeds the loci scoring's
+*disagreement* dimension), not as a degraded afterthought. The mechanical claim-graph is the
+higher-rigor path available only when a claim-producing fetcher wave was actually run; do NOT
+treat its absence as an error or go hunting for the missing files.
 
 **Goal:** before loci analysis (loci = the contested focal points / sub-debates the report must engage), build an explicit graph of opposing claims via **claim-pairing** across the corpus, plus the consensus claims that are settled ground. This is the procedure that was the former step 3.
 
@@ -145,11 +155,22 @@ The loci procedure below reads `contradiction-graph.json` (the fight clusters fe
 
 6. **Decide investigator count AND fan-out arrangement (branch on `query_shape`).** Read `query_shape` from `research/prompt-decomposition.json` (set by step 1.5). The fan-out *shape* — orthogonal to the tier — decides how step 5's investigators are *arranged* (Claude Research `research_lead_agent.md:12-29`):
 
-   - **`breadth_first`** → investigators run **in parallel** across the independent sub-questions / loci, **importance-ordered** (highest composite-score locus first), `K = min(n_subq, cap)` capped at 6. This is the default arrangement for surveys/comparisons/collections — the loci are independent so they go wide simultaneously.
+   - **`breadth_first`** → investigators run **in parallel** across the independent sub-questions / loci, **importance-ordered** (highest composite-score locus first), `K = min(n_subq, cap)` capped at `LOCI_MAX` (`skills/routing_constants.py`, currently **6**). This is the default arrangement for surveys/comparisons/collections — the loci are independent so they go wide simultaneously. `bad route --json` reports the same numbers under its `fanout` key (`{k, n_subq, cap, deferred}`) — do not re-derive them.
    - **`depth_first`** → **2–4 SEQUENTIAL** perspectives on the **one** highest-impact locus. Do NOT fan out across many loci; instead pick the single most contested/load-bearing locus and queue 2–4 investigators that run one after another, each reading the prior's committed position (set up in step 5). One topic, many angles, going deep.
    - **`straightforward`** → a **single** investigator on the one locus that matters. No ensemble.
 
-   Record the chosen arrangement (`parallel` / `sequential` / `single`) and the ordered locus list in `research/loci.json` under a top-level `"fanout"` key so step 5 dispatches accordingly. Absent a `query_shape` (older runs), default to the legacy parallel-per-locus behavior. The base rule still holds: one depth-investigator per locus with `source_budget > 0`, capped at 6; if only 1 locus passes scoring, spawn 1.
+   Record the chosen arrangement (`parallel` / `sequential` / `single`) and the ordered locus list in `research/loci.json` under a top-level `"fanout"` key so step 5 dispatches accordingly. Absent a `query_shape` (older runs), default to the legacy parallel-per-locus behavior. The base rule still holds: one depth-investigator per locus with `source_budget > 0`, capped at `LOCI_MAX` (currently 6); if only 1 locus passes scoring, spawn 1.
+
+   **Say what the cap dropped — never truncate silently.** When more loci / sub-questions survive scoring than `LOCI_MAX`, the surplus is **deferred**, not discarded. Add a `"coverage"` block inside that same `"fanout"` key:
+
+   ```json
+   "fanout": {
+     "arrangement": "parallel",
+     "coverage": {"covered": 6, "of": 25, "deferred": ["<locus name>", "..."]}
+   }
+   ```
+
+   and echo one line to the user: `Covered 6 of 25 sub-questions this pass; 19 deferred to the gap waves.` A wide survey that investigates 6 of 25 forks is a legitimate pass — one that does it without saying so is a silent coverage hole (issue #36 item 5).
 
 **INVARIANT:** at least one `flavor: "dialectical"` locus must be present unless an analyst's `skip_loci` justifies its absence with specific evidence of a univocal corpus. No dialectical locus + no justification = re-spawn the loci-analyst with a tighter prompt.
 

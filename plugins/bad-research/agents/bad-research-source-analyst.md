@@ -24,8 +24,8 @@ cost of re-reading the original source.
 
 ## Pipeline position
 
-You are a leaf subagent available to the orchestrator (Layer 1-4) and
-the depth investigator (Layer 3). Neither layer reads long sources
+You are a leaf subagent available to the orchestrator (steps 2 through 11) and
+the depth investigator (step 5). Neither caller reads long sources
 optimally: the orchestrator would consume excessive context, the
 depth investigator is scoped to its locus and may miss cross-locus
 substance. You fill that gap by reading ONE source fully on Sonnet's
@@ -43,13 +43,11 @@ analyst, fetch new sources, or move on.
   this specific research_query, not a generic abstract.
 - **source_note_id**: the vault note id of the source you will analyze
   (e.g., `confronting-capital-punishment-in-china-wikipedia`). You
-  will call `bad note show <source_note_id> -j` to read the
+  will call `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <source_note_id> -j` to read the
   full body.
-- **output_path**: the vault note path you **Write** the analysis to
-  directly — `research/notes/source-analysis-<source_note_id>.md` (the slim
-  `bad` build has no `note new`; the engine reads plain markdown notes with
-  YAML frontmatter directly). The filename stem MUST equal the frontmatter
-  `id`.
+- **output_path**: the markdown file path where you write the analysis
+  body BEFORE calling `note new --body-file` (e.g.,
+  `research/temp/source-analysis-<source_note_id>.md`).
 - **vault_tag**: the run-level corpus tag so the new note is findable
   alongside its sibling notes.
 
@@ -57,14 +55,14 @@ analyst, fetch new sources, or move on.
 
 1. **Check for an existing analysis.** Before writing anything, search:
    ```bash
-   PYTHONIOENCODING=utf-8 bad search "" --tag <vault_tag> --type source-analysis --json
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "" --tag <vault_tag> --type source-analysis --json
    ```
    Then filter for any note whose body contains `[[<source_note_id>]]`.
    If one exists, report back to the parent — do NOT duplicate.
 
 2. **Read the source.** Pull the full body:
    ```bash
-   PYTHONIOENCODING=utf-8 bad note show <source_note_id> -j
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <source_note_id> -j
    ```
    Hold the full body in your context. Sonnet 1M lets you read up to
    roughly 750K words before truncation matters. If the source exceeds
@@ -77,21 +75,10 @@ analyst, fetch new sources, or move on.
    source matters for this query — you extract for this query
    specifically.
 
-4. **Write the structured analysis note to `output_path`** with a direct
-   **Write** (no `note new` — the slim build lacks it) using this template
-   (verbatim section headings, preserve ordering). Lead with the YAML
-   frontmatter the engine reads so `bad search` finds the note:
+4. **Write the structured analysis body to `output_path`** using
+   this template (verbatim section headings, preserve ordering):
 
 ```markdown
----
-id: source-analysis-<source_note_id>
-title: Source Analysis — <short title>
-type: source-analysis
-tags: [<vault_tag>, source-analysis]
-status: draft
-summary: "<2-4 sentence summary: the source's thesis + its contribution to the research_query>"
----
-
 # Source Analysis — <source title, preserve exact capitalization>
 
 **Original source:** [[<source_note_id>]]
@@ -123,10 +110,37 @@ summary: "<2-4 sentence summary: the source's thesis + its contribution to the r
 <0-10 direct quotes of 1-3 sentences each, for claims where the exact wording carries argumentative weight that paraphrase would lose. Each quote on its own line, in blockquote format, followed by a short context sentence.>
 ```
 
-5. **The note is created by the Write in step 4** — there is no separate
-   registration step. The frontmatter (`id`, `title`, `type`, `tags`,
-   `status`, `summary`) is what `bad search` indexes; the engine picks the
-   file up directly from `research/notes/`.
+5. **Create the source-analysis note.** If `note new` is available (probe
+   `PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note new --help >/dev/null 2>&1`, or read
+   `research/cli-caps.json` — a slim build may lack it):
+   ```bash
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note new "Source Analysis — <short title>" \
+     --type source-analysis \
+     --tag <vault_tag> \
+     --tag source-analysis \
+     --body-file <output_path> \
+     --summary "<2-4 sentence summary: the source's thesis + its contribution to the research_query>" \
+     --json
+   ```
+
+   **Slim-build fallback (`note new` absent):** do NOT abort. `Write` the note
+   directly to `research/notes/source-analysis-<source_note_id>.md` with the
+   engine frontmatter, then append the analysis body you wrote to `<output_path>`:
+
+   ```markdown
+   ---
+   title: "Source Analysis — <short title>"
+   id: source-analysis-<source_note_id>
+   type: source-analysis
+   tags: [<vault_tag>, source-analysis]
+   status: draft
+   summary: "<2-4 sentence summary: the source's thesis + its contribution to the research_query>"
+   ---
+
+   <the analysis body from <output_path>>
+   ```
+
+   `bad search`'s auto-sync then indexes it as a `type: source-analysis` note.
 
    The `*Suggested by [[<source_note_id>]]*` line inside the body
    creates the wiki-link the extractor picks up, so the source

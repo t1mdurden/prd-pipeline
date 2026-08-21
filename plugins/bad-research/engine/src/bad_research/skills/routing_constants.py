@@ -20,24 +20,30 @@ FAST_RESERVE_SYNTH_FRAC   = 0.25   # fraction of budget reserved for the writer 
                                    # the token-valued RESERVE_FOR_SYNTHESIS below — do NOT merge)
 FAST_TIMEOUT_S            = 600    # wall-clock safety net (belt-and-suspenders on the step cap)
 
-# Breadth-shape parallel sub-researcher fan-out cap for the fast loop.
+# Breadth-shape parallel sub-researcher fan-out cap for the fast loop. The fast
+# route owns the breadth branch (K parallel researchers in breadth mode), so this
+# is the single middle-tier fan-out lever — the former `ultrafast` route (fast's
+# breadth branch with the caps turned up) was folded away 2026-07-06.
 FAST_SUBRESEARCHER_K = 3
-
-# ---- Ultrafast-route constants (keyless commercial-DR middle tier) ----
-# Sits between FAST_* and the full-tier caps: plan -> K parallel researchers ->
-# leader-only sectioned synthesis. Parallel fetchers => wall-clock ~= one wave
-# (~5-6 min) + synthesis/grounding (~4-6 min) = the 5-15 min target. Tunable;
-# no control flow depends on the exact values (the skill prose reads them).
-ULTRAFAST_MAX_SUBQUESTIONS     = 8     # report sections / parallel researcher streams (fast=3)
-ULTRAFAST_SUBRESEARCHER_K      = 6     # parallel bad-research-fetcher cap (fast FAST_SUBRESEARCHER_K=3)
-ULTRAFAST_MIN_SOURCES_PER_SUBQ = 4     # distinct domains to mark a sub-question green (fast=3)
-ULTRAFAST_FETCHER_TIMEOUT_S    = 360   # per-researcher soft deadline (FETCHER_TIMEOUT_S default=300)
-ULTRAFAST_RESERVE_SYNTH_FRAC   = 0.30  # budget reserved for the longer synthesis (FAST_RESERVE_SYNTH_FRAC=0.25)
-ULTRAFAST_TIMEOUT_S            = 900    # wall-clock safety net, 15 min (FAST_TIMEOUT_S=600)
 
 # Parallel subagent fan-out (Claude depth-1) — INTERFACES / CLR §CE.5,§CE.10
 SUBAGENT_FANOUT_DEFAULT = 3
 SUBAGENT_FANOUT_MAX = 20
+
+# The loci / depth-investigator fan-out cap — the SINGLE SOURCE OF TRUTH for
+# "how many parallel depth investigators can one full-route pass run". Steps 4
+# and 5 enforce it (bad-research-4-loci-analysis.md, bad-research-5-depth-
+# investigation.md) and EFFORT_MAP's top rung pins it as `loci_max`.
+#
+# It is deliberately NOT SUBAGENT_FANOUT_MAX (20). 20 is the generic Claude
+# subagent ceiling — what the host will spawn at all. 6 is what a depth pass can
+# usefully investigate: each locus costs a full source budget and an
+# INVESTIGATOR_TIMEOUT_S window, and the ~80-read synthesis ceiling
+# (READ_TOP_K_CEILING / SPEC §"the ~80-read ceiling is load-bearing") binds long
+# before 20 loci do. Anything past the cap is DEFERRED to the gap waves, and the
+# router now says so out loud (router.fanout_coverage / shape_reason) instead of
+# truncating in silence — issue #36 item 5.
+LOCI_MAX = 6
 
 # Clarifier (OpenAI default-proceed) — DR-loops §1 / ODR §5
 CLARIFY_MAX_QUESTIONS = 3
@@ -47,7 +53,6 @@ READ_TOP_K_CEILING = 80
 RELEVANCE_GATE = 0.70
 
 # Router heuristic boundaries — DR-loops §9.2 (the verbatim decision tree)
-ROUTER_AGENTIC_MAX_ATOMIC = 2
 ROUTER_LIGHT_MAX_ATOMIC = 6
 
 
@@ -132,9 +137,17 @@ ROUTER_SURVEY_MAX_ATOMIC = 40
 # How many atomic items count as a "straightforward" single-investigation query.
 SHAPE_STRAIGHTFORWARD_MAX_ATOMIC = 2
 
-# The parallel breadth-first fan-out cap (mirrors SUBAGENT_FANOUT_MAX = 20). The
-# effective K is min(n_independent_subq, this cap).
-SHAPE_BREADTH_K_CAP = SUBAGENT_FANOUT_MAX  # 20
+# The parallel breadth-first fan-out cap. The effective K is
+# min(n_independent_subq, this cap).
+#
+# This K IS the depth-investigator count, so it must equal LOCI_MAX — the cap
+# steps 4 and 5 actually enforce. It used to mirror SUBAGENT_FANOUT_MAX (20),
+# which made `bad route` promise a 25-sub-question survey "K=20 parallel
+# investigators" when 6 would run: 3.3x over-reported width, 19 sub-questions
+# dropped, nothing recording it (issue #36 item 5). The cap is unchanged in
+# effect — only the reported number was ever wrong — and what falls outside it
+# is now reported as DEFERRED rather than silently truncated.
+SHAPE_BREADTH_K_CAP = LOCI_MAX  # 6
 
 # Depth-first deploys 2-4 SEQUENTIAL perspectives on one locus.
 SHAPE_DEPTH_MIN_PERSPECTIVES = 2
@@ -172,23 +185,30 @@ SHAPE_FANOUT: dict[str, dict[str, object]] = {
 MAX_GRADER_REVISIONS = 3
 
 # Per-subagent runtime caps (Claude CE.5), keyless host guards. dossier 16 §3.2.
-FETCHER_TOOLCALL_CAP = {"light": 10, "ultrafast": 15, "full": 20}  # tool calls per fetcher
+FETCHER_TOOLCALL_CAP = {"light": 10, "full": 20}  # tool calls per fetcher
 FETCHER_TIMEOUT_S = 300       # soft-fail, return partial findings
 INVESTIGATOR_TIMEOUT_S = 900  # depth stage scaled (Grok 200s x cost)
 SUBAGENT_SOURCE_KILL = 100    # hard stop on sources touched (Claude)
 
 # Reasoning-effort continuum — OpenAI's 4-level dial (dossier 16 §6.1) mapped onto
-# the existing route + LLM-tier + per-stage fan-out levers. Wiring the stub
-# --effort flag (research.py) into a real config the router consumes.
+# the existing route + per-stage fan-out levers. Wiring the stub --effort flag
+# (research.py) into a real config the router consumes.
+#
+# There is deliberately NO `tier` (model) column. It used to name a model tier per
+# effort level, but nothing ever applied it: every step skill pins its own subagent
+# tier (`tier: "work"` in the spawn contract), the orchestrator cannot re-tier itself,
+# and the map's own "default" value was not even a member of the model-tier vocabulary
+# (config.model_tiers = triage/work/heavy) — so it could not have been honoured as
+# written. The live model-cost lever is `config.cheap` (heavy→work, llm/anthropic.py).
 EFFORT_LEVELS = ("minimal", "low", "medium", "high")
 EFFORT_MAP = {
-    "minimal": {"route": "fast", "tier": "triage", "fetchers_max": 4,  "loci_max": 0,
+    "minimal": {"route": "fast", "fetchers_max": 4,  "loci_max": 0,
                 "extended_thinking": False, "single_draft": True},
-    "low":     {"route": "fast", "tier": "work",   "fetchers_max": 8,  "loci_max": 0,
+    "low":     {"route": "fast", "fetchers_max": 8,  "loci_max": 0,
                 "extended_thinking": False, "single_draft": True},
-    "medium":  {"route": "full",  "tier": "default", "fetchers_max": 12, "loci_max": 4,
+    "medium":  {"route": "full", "fetchers_max": 12, "loci_max": 4,
                 "extended_thinking": True,  "single_draft": False},
-    "high":    {"route": "full",  "tier": "heavy",  "fetchers_max": 12, "loci_max": 6,
+    "high":    {"route": "full", "fetchers_max": 12, "loci_max": LOCI_MAX,
                 "extended_thinking": True,  "single_draft": False},
 }
 
@@ -216,3 +236,37 @@ DEGRADE_ORDER = (
 # DEGRADE_ORDER to its terminal `short_circuit_to_synthesis` step. Perplexity-style
 # "reserve budget for synthesis" (PERPLEXITY_COMPUTER.md:434).
 RESERVE_FOR_SYNTHESIS = 40_000  # tokens; ~10K synth context + draft output + grounding
+
+# ── The RUN-LEVEL wall-clock deadline for the `full` route ────────────────────
+# The SECOND, independent trigger for the SAME terminal `short_circuit_to_synthesis`
+# step above — not a new degrade step. The token trigger is opt-in (`--max-tokens`)
+# AND needs a cumulative token count no phase actually accounts for, so on a default
+# full run the terminal step was unreachable: a long run died mid-pipeline (losing
+# every in-flight agent) instead of degrading to a shipped, grounded, smaller-corpus
+# report. The full route's ONLY other deadline is per-wave (FETCHER_TIMEOUT_S), which
+# bounds one fetcher wave and says nothing about the run.
+#
+# Wall-clock is the right denominator precisely because it is OBSERVABLE and the model
+# cannot fake it — the same discipline the fast loop applies to its stop rule ("loop
+# counters, not model claims — the stop is auditable even if the model lies",
+# bad-research-fast.md). A model-written token estimate has neither property.
+#
+# The net must not fire inside the route's OWN advertised band. The entry skill
+# announces "Route: full (~1.5-2.5 h)", i.e. up to 9000 s is a healthy run — and the
+# predicate fires a whole RESERVE_FOR_SYNTHESIS_S EARLY, because "compose now" has to
+# leave room to actually compose. So the deadline is the top of the band PLUS that
+# reserve: 9000 + 1800 = 10800 s. The trigger point is then exactly 9000 s = 2.5 h —
+# the first moment a run has provably outlived its own worst-case estimate — and the
+# whole job is bounded at 3 h. Setting this to 9000 instead would have fired at
+# 7200 s = 2.0 h, in the middle of the advertised band, degrading healthy runs.
+# This is the full-route twin of FAST_TIMEOUT_S (600 s on a <10-min target) — a
+# safety net over the structural caps, never a replacement for them.
+FULL_TIMEOUT_S = 10800  # seconds; run-level wall-clock net for `full` (3 h)
+
+# Wall-clock twin of RESERVE_FOR_SYNTHESIS: the slice of the deadline held back for
+# the stages the short-circuit jumps TO (10 drafts → 11 synthesis → 11.5 grounding →
+# 15/16 gate). Deliberately larger than one INVESTIGATOR_TIMEOUT_S (900 s) because
+# that seam is several stages, not one subagent. "Compose now" fires while this much
+# time is still LEFT, so synthesis still fits inside the deadline — reserving it after
+# the deadline passes would reserve nothing.
+RESERVE_FOR_SYNTHESIS_S = 1800  # seconds; ~30 min of drafting + synthesis + grounding

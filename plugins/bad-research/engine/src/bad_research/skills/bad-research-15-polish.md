@@ -62,7 +62,15 @@ The polish auditor strips:
 - Hygiene leaks (YAML frontmatter, scaffold sections, prompt echoes)
 - Filler phrases ("It is worth noting", "Importantly", etc.)
 - Redundant sentences / paragraphs that restate prior content
-- Run-on sentences and over-long paragraphs (breaks into smaller units via Edit)
+
+**Do NOT reformat structure here** (run-on/paragraph splitting, list/table conversion,
+paragraph rhythm). That is step 16's job, and step 16 owns it on purpose: it uses the
+judgment-safe *recommend-then-apply* mechanism (the recommender proposes, the orchestrator
+decides), because a direct-Edit reformatter "sometimes makes changes that hurt the argument —
+converting a flowing paragraph to a bullet list when the prose was load-bearing." Splitting a
+run-on here via blind Edit is exactly that hazard, and doing it in both steps is duplicate work.
+Polish is hygiene + filler + redundancy (a NEGATIVE net-char cut); structural readability is
+step 16.
 
 ---
 
@@ -102,34 +110,45 @@ If any artifact is missing, the responsible step failed silently. Re-spawn the r
 
 ---
 
-## Step 15.5 — Record the run + lint gate
+## Step 15.5 — Lint gate
 
-1. **Record the run.** Append to `research/audit_findings.json`:
-   ```json
-   {
-     "mode": "bad-research-v8",
-     "run_id": "<iso timestamp>",
-     "loci_count": <K>,
-     "critical_findings_applied": <int>,
-     "critical_findings_skipped": <int>,
-     "polish_escalations": <int>,
-     "final_word_count": <int>
-   }
-   ```
+Run the deterministic lint rules (or `bad lint --json` for all four at once):
 
-2. **Run the lint gate:**
-   ```bash
-   $HPR lint --rule wrapper-report --json
-   $HPR lint --rule locus-coverage --json
-   $HPR lint --rule scaffold-prompt --json
-   $HPR lint --rule patch-surgery --json
-   ```
+```bash
+bad lint --rule wrapper-report --json
+bad lint --rule locus-coverage --json
+bad lint --rule scaffold-prompt --json
+bad lint --rule patch-surgery --json
+```
 
-   If any rule returns `error` severity issues, address them before declaring complete:
-   - `wrapper-report`: scaffold leaked into the body — re-spawn the polish auditor with the specific leak flagged
-   - `locus-coverage`: a locus identified in step 4 has no interim note — a depth investigator failed silently; do not re-run, just note in the run log
-   - `scaffold-prompt`: scaffold's User Prompt section doesn't match the query file exactly — fix the scaffold
-   - `patch-surgery`: draft churn from step 11 → final exceeds the safety threshold — read the patch log and investigate
+Each rule checks the **presence and shape of one artifact** — none of them reads the
+report's prose. Only `error` severity blocks (`bad lint` exits 1); `warning` / `info`
+are reported and do not gate. What each rule actually asserts, and what to do:
+
+- `wrapper-report`: at least one `research/notes/final_report_*.md` exists (**error** if
+  none — step 11 or the fast writer never landed its file), and each one contains at
+  least one citation marker: `[[note-id]]` wikilink, `[^…]`, `[Source …]`, or `[N]`
+  (**warning** if a report has none — the polish auditor most likely stripped the
+  citation style; re-spawn it with the citation-preservation rule flagged). It does
+  NOT detect scaffold leakage — that is the polish auditor's own hygiene pass.
+- `locus-coverage`: `research/loci.json` is valid JSON (**error** if not) and a final
+  report exists to check against (**error** if none); then every locus `id` must appear
+  as a case-insensitive substring somewhere in the report body (**warning** per missing
+  locus — a depth investigator's locus never made it into the draft; note it in the run
+  log rather than re-running). An absent `loci.json` is `info`, not a failure — the
+  light tier has no step 4.
+- `scaffold-prompt`: `research/scaffold.md` exists (**error** if not) and contains a
+  markdown **heading** matching `#+ User Prompt` followed by non-empty content
+  (**error** if the heading is missing or its section is empty). It never opens the
+  query file, so it cannot tell you the two disagree — it only checks the heading is
+  there and not empty. Fix by writing the canonical
+  `## User Prompt (VERBATIM — gospel)` heading with the verbatim query under it.
+- `patch-surgery`: `research/patch-log.json` parses as JSON (**error** if not) and
+  carries at least one canonical key (`total_findings` / `applied` / `skipped` /
+  `conflicts` / `orchestrator_escalated`; legacy `hunks` / `patches` also accepted)
+  (**warning** if not — step 14 logged an off-schema shape; re-read the patcher's Task
+  result and rewrite the log). It measures no churn and never compares drafts. An
+  absent log is `info` — expected on the light tier, which has no step 14.
 
 ---
 
