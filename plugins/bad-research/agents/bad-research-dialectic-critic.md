@@ -60,10 +60,10 @@ actually gathered, not guesses.
    Flag claims that sound confident without acknowledging a counter-claim.
 
 2. **Search the vault for counter-evidence.** Use
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "<keyword>" --tag <vault_tag> -j` to find interim
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<keyword>" --tag <vault_tag> -j` to find interim
    notes, width-corpus notes, and source extracts that disagree with or
    complicate the draft's claims. Read suspect notes in full
-   (`/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id> -j`).
+   (`/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id> -j`).
 
 3. **For each finding**, emit one entry in the output JSON. Do NOT rewrite
    the paragraph. Suggest a specific patch: a sentence to insert, a

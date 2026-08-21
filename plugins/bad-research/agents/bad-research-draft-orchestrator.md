@@ -76,7 +76,7 @@ the 20-50 sources most relevant to YOUR angle.
 
 1. **Batch-read in chunks of 5-8 IDs.** Stay within output limits:
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id1> <id2> <id3> <id4> <id5> -j
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id1> <id2> <id3> <id4> <id5> -j
    ```
    Repeat until every ID in `must_read_note_ids` has been read. If a
    batch returns truncated bodies, re-read those IDs individually with

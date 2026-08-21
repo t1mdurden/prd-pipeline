@@ -46,7 +46,7 @@ the draft at `research/notes/final_report_<vault_tag>.md`.
 
 2. **Dialectic angle** — flag every claim that takes a confident position without
    engaging the obvious counter-claim or alternative framing. Search the vault
-   (`/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "<keyword>" --tag <vault_tag> -j`, `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id> -j`)
+   (`/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<keyword>" --tag <vault_tag> -j`, `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id> -j`)
    for on-disk evidence that complicates or contradicts the draft's claims.
 
 3. **Instruction angle** — go through the prompt phrase by phrase. For each atomic item

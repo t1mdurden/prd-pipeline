@@ -48,7 +48,7 @@ rather than gesturing at it from a distance.
    findings on topics the query explicitly names.
 
 1. **List the interim notes.** Use
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "" --tag <vault_tag> --type interim -j` to find
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "" --tag <vault_tag> --type interim -j` to find
    every depth-investigator interim report in the vault.
 
 2. **Read each interim note.** For each, ask: is the Synthesis section of

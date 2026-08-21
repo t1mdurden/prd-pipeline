@@ -51,7 +51,7 @@ to drafting.
    position in tensions.md, identify the 2-3 source note IDs that
    the position rests on. Read them in full:
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad note show <id1> <id2> <id3> -j
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad note show <id1> <id2> <id3> -j
    ```
    Check: does the original source actually support the committed
    position as stated? Summaries and interim notes can drift from
@@ -73,7 +73,7 @@ to drafting.
 5. **Search the vault** for existing sources that might already contain
    overturning evidence that the investigators missed:
    ```bash
-   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "<adversarial query>" --tag <corpus_tag> -j
+   PYTHONIOENCODING=utf-8 /private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "<adversarial query>" --tag <corpus_tag> -j
    ```
 
 6. **Produce output** at `output_path`:

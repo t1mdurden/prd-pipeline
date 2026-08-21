@@ -47,7 +47,7 @@ because the orchestrator's structural choices buried them.
    ground truth for what the user asked about.
 
 1. **Survey the vault.** Use
-   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.vpH9Y31rLu/venv/bin/bad search "" --tag <vault_tag> -j` to list every note.
+   `/private/var/folders/jm/x74dlk1s4_q_982rmn3dxcx80000gn/T/tmp.oRkNTph1E0/venv/bin/bad search "" --tag <vault_tag> -j` to list every note.
    Cluster by tag and/or by title keywords. This tells you the topical
    surface area the corpus covers.
 
