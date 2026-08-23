@@ -40,6 +40,7 @@ PROVIDERS: tuple[Provider, ...] = (
     Provider("ddgs", None, "ddgs", "(base)", "search"),            # keyless multi-engine lib
     Provider("searxng", None, None, "(base)", "search"),           # self-host, no key
     Provider("crawl4ai", None, "crawl4ai", "(base)", "browse"),    # local JS render
+    Provider("oc", None, None, "(base)", "browse"),                # rung 1.5, local CLI (node)
     Provider("silver", None, None, "browse", "browse"),            # local CLI (Playwright)
     Provider("agent-browser", None, None, "browse", "browse"),     # local CLI (CDP), fallback
     Provider("arxiv", None, None, "(base)", "search"),             # keyless vertical (httpx)
@@ -59,6 +60,7 @@ PROVIDERS: tuple[Provider, ...] = (
 # NOT pip deps — installed out-of-band. `bad doctor` reports presence + this hint.
 # SearXNG is intentionally ABSENT (silent/opt-in, INTERFACES_KEYLESS §9).
 EXTERNAL_CLIS: dict[str, str] = {
+    "oc": "npm i -g @only-cli/oc      # rung 1.5: Chrome-shaped fetch, no browser",
     "silver": "npm i -g agent-silver   # keyless headless Chromium (default browse rung)",
     "agent-browser": "agent-browser install   # pulls Chrome-for-Testing, no account",
     "lightpanda": "curl -L github.com/lightpanda-io/browser/releases/latest -o lightpanda  # keyless JS engine",
@@ -116,7 +118,7 @@ def _host_bridge_live(name: str) -> bool:
 # filesystem probe can answer whether the lane can actually run. Same honesty
 # contract as _HOST_BRIDGE_PROVIDERS (issue #35 §2) — doctor must not promise a
 # capability the engine cannot deliver.
-_EXTERNAL_ENGINE_PROVIDERS = frozenset({"last30days"})
+_EXTERNAL_ENGINE_PROVIDERS = frozenset({"last30days", "oc"})
 
 
 def _external_engine_live(name: str) -> bool:
@@ -125,6 +127,12 @@ def _external_engine_live(name: str) -> bool:
         from bad_research.web.search.social import resolve_engine
 
         return resolve_engine() is not None
+    if name == "oc":
+        # A rung doctor cannot see is a rung nobody can debug. `is_available()` is
+        # shutil.which plus a Path.is_file on the vendored checkout — no subprocess.
+        from bad_research.browse.oc import is_available
+
+        return is_available()
     return False
 
 
