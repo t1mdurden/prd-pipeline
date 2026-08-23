@@ -2,8 +2,9 @@
 
 - Code notes (content_type == "code"): tree-sitter AST split + NIA-style
   header prepended to embed_text (Task 5 extends this).
-- Prose: markdown heading-aware split; oversized sections re-split at
-  paragraph breaks. Whole note if body < CHUNK_BYTE_MIN.
+- Prose: markdown heading-aware split; oversized sections re-split at the
+  best boundary available (paragraph, then line, then sentence). Whole note
+  if body < CHUNK_BYTE_MIN.
 - chunk_id = sha1(url + "#" + heading)  (NIA §3.5 stable-id pattern).
 - char_start/char_end index into note.body (provenance for grounding, Plan 06).
 """
@@ -48,22 +49,52 @@ def _heading_spans(body: str) -> list[_Span]:
     return spans
 
 
+_HARD_CAP = CHUNK_BYTE_TARGET * 2
+
+
+def _boundaries(text: str) -> list[int]:
+    """Candidate cut offsets inside `text`, relative to its start, ascending.
+
+    Paragraph breaks first. A fetched page usually has none — trafilatura emits
+    one line per paragraph, no blank lines (803 of 1113 notes in a real vault),
+    which left a 20 KB page as a single 20 KB "chunk" — so fall back to line
+    breaks, then to sentence ends.
+    """
+    for pat in (r"\n\s*\n", r"\n", r"(?<=[.!?])\s+"):
+        offs = [m.end() for m in re.finditer(pat, text)]
+        if len(offs) >= 2:
+            return offs
+    return []
+
+
 def _split_oversized(span: _Span, body: str) -> list[_Span]:
-    """Split a too-large span at blank-line (paragraph) boundaries, keeping
-    each piece <= CHUNK_BYTE_TARGET where possible. Offsets stay absolute."""
+    """Split a too-large span at the best available boundary, keeping each piece
+    near CHUNK_BYTE_TARGET. Offsets stay absolute and every piece stays a
+    verbatim slice of `body`."""
     text = body[span.start:span.end]
     if len(text.encode()) <= CHUNK_BYTE_TARGET:
         return [span]
+    cuts = [span.start + o for o in _boundaries(text)]
     pieces: list[_Span] = []
-    para_starts = [span.start, *(span.start + m.end() for m in re.finditer(r"\n\s*\n", text))]
     buf_start = span.start
-    for nxt in [*para_starts[1:], span.end]:
-        if (nxt - buf_start) > CHUNK_BYTE_TARGET and nxt > buf_start:
+    for nxt in [*cuts, span.end]:
+        if nxt <= buf_start:
+            continue
+        if len(body[buf_start:nxt].encode()) >= CHUNK_BYTE_TARGET:
             pieces.append(_Span(span.heading, buf_start, nxt))
             buf_start = nxt
     if buf_start < span.end:
         pieces.append(_Span(span.heading, buf_start, span.end))
-    return pieces or [span]
+    # Last resort: one unbroken run with no boundary at all. Cut on characters
+    # (the cap is bytes; chars <= bytes, so this always advances and terminates).
+    out: list[_Span] = []
+    for p in pieces:
+        while len(body[p.start:p.end].encode()) > _HARD_CAP:
+            cut = p.start + CHUNK_BYTE_TARGET
+            out.append(_Span(p.heading, p.start, cut))
+            p = _Span(p.heading, cut, p.end)
+        out.append(p)
+    return out or [span]
 
 
 def _prose_chunks(note: Note) -> list[Chunk]:

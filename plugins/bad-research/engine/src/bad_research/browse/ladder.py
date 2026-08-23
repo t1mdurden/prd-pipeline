@@ -1,6 +1,7 @@
 """fetch_tiered — the 4-rung KEYLESS escalation ladder (INTERFACES_KEYLESS §4.4, dossier 14 §7).
 
   rung 1   httpx GET (core/fetcher) ............... $0  static HTML/APIs
+  rung 1.5 oc (Chrome-shaped fetch, no JS) ......... $0  pages httpx gets an interstitial for
   rung 2   crawl4ai local JS render → fit_markdown . $0  clean MD, no interaction
   rung 2.5 silver (headless Chromium, read-only) ... $0  keyless JS render (snapshot/read)
   rung 3   silver --enable-actions ................. $0  login/click/typed/screenshot
@@ -86,6 +87,7 @@ def fetch_tiered(
     variables: dict[str, Any] | None = None,
     # ---- injection seams (tests pass mocks; production gets real keyless defaults) ----
     _tier0: Any | None = None,
+    _oc: Any | None = _UNSET,
     _tier1_factory: Callable[[], Any | None] | None = None,
     _browse: Any | None = _UNSET,
     _extractor: Any | None = None,
@@ -96,6 +98,23 @@ def fetch_tiered(
         from bad_research.web.base import get_provider
         _tier0 = get_provider("builtin")
     result = _tier0.fetch(url)
+
+    # ---------- Rung 1.5: oc (Chrome-shaped fetch, no JS) ----------
+    # Cheapest thing that beats a server which simply dislikes httpx. `oc` sends
+    # Chrome's TLS/HTTP2 fingerprint and headers, so an interstitial for rung 1 is
+    # often the article here — and it costs one subprocess, no browser.
+    #
+    # It is tried on the SAME `_is_empty` condition as crawl4ai and it wins only by
+    # returning MORE text, which is what contains its known silent-miss failure: on a
+    # JS-only page `oc` exits 0 having distilled nothing (only-cli/oc#14). Such a
+    # result loses this comparison and the ladder escalates as if the rung had not
+    # run. Do not promote it on anything weaker than that.
+    if tier_max >= 1 and _is_empty(result):
+        oc_result = _oc_fetch(url, _oc)
+        if oc_result is not None and len(oc_result.content.strip()) > len(
+            result.content.strip()
+        ):
+            result = oc_result
 
     # ---------- Rung 2: crawl4ai local JS render ----------
     if tier_max >= 1 and _is_empty(result):
@@ -179,6 +198,26 @@ def fetch_tiered(
                 result.metadata["extracted"] = data
 
     return result
+
+
+def _oc_fetch(url: str, oc: Any | None) -> WebResult | None:
+    """Run the rung-1.5 `oc` provider, or return None when it is unavailable.
+
+    `_UNSET` (the default — production callers never pass `_oc`) resolves the real
+    provider; an explicit `None` means the caller has decided the rung is off, which is
+    how the existing tests keep a machine with `oc` installed from reaching the network.
+    Never raises: a broken or absent CLI is a None.
+    """
+    if oc is not _UNSET:
+        if oc is None:
+            return None
+        return oc.fetch(url)
+    try:
+        from bad_research.browse import oc as oc_module
+
+        return oc_module.fetch(url)
+    except Exception:
+        return None
 
 
 def _resolve_browse(browse: Any | None) -> Any | None:
