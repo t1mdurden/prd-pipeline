@@ -182,7 +182,15 @@ function measure(scale) {
 
   const noFocusRing = []
   for (const el of document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')) {
+    // Two kinds of element match that selector and yet cannot be focused, and counting them
+    // reports a ring that is missing from somewhere nobody can stand. Skip them, and only
+    // them — every element a keyboard can actually reach is still checked.
+    //   1. no layout box: a `hidden` Radix TabsContent panel, a display:none menu item.
+    //   2. roving tabindex: a TabsList / toolbar that hands focus straight to its active child,
+    //      so after .focus() the element is not the one that ended up focused.
+    if (!el.getClientRects().length) continue
     el.focus()
+    if (document.activeElement !== el) continue
     const s = getComputedStyle(el)
     if (s.outlineStyle === 'none' && s.boxShadow === 'none') noFocusRing.push(el.outerHTML.slice(0, 120))
   }
