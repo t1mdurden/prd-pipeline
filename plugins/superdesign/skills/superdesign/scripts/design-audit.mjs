@@ -2,10 +2,16 @@
 // design-audit — the rendered half of the Phase-5 gate. What a grep cannot see and a VLM
 // cannot be trusted to see: geometry. Everything here is measured in the page, never judged.
 //
-//   node scripts/design-audit.mjs --url http://localhost:5173/dashboard
-//   node scripts/design-audit.mjs --url <url> --theme light,dark --json
+//   node .claude/skills/superdesign/scripts/design-audit.mjs --url http://localhost:5173/dashboard
+//   node .claude/skills/superdesign/scripts/design-audit.mjs --url <url> --theme light,dark --json
 //
-// Exit code = number of failed caps + serious/critical axe violations (0 = pass).
+// EXIT-CODE CONTRACT — identical in every superdesign gate (ARCHITECTURE.md §2):
+//   0        clean
+//   1–63     the number of violations. A count above 63 is clamped to 63 and the line says so.
+//   64–79    harness error — 64 usage · 65 missing dep · 66 navigation failed · 67 no target
+// Here a violation is one failed cap or one serious/critical axe violation. Before this commit
+// the script exited 2 on a usage error and 4 on a missing Playwright, both of which are also
+// legal violation counts — a caller could not tell "two violations" from "bad arguments".
 //
 // Dependencies are NOT vendored: this repo ships no package.json. Each is borrowed — in order —
 // from this script's directory, the cwd, then `silver`'s own install, so with silver present only
@@ -67,8 +73,8 @@ const themes = String(arg('theme', 'light,dark')).split(',').map((s) => s.trim()
 const asJson = argv.includes('--json')
 
 if (!url) {
-  console.error('usage: node scripts/design-audit.mjs --url <url> [--theme light,dark] [--json]')
-  process.exit(2)
+  console.error('usage: node .claude/skills/superdesign/scripts/design-audit.mjs --url <url> [--theme light,dark] [--json]')
+  process.exit(64) // 64 = usage
 }
 
 /**
@@ -112,7 +118,7 @@ try {
   console.error('  With silver installed:  npm i -D @axe-core/playwright')
   console.error('  Without:                npm i -D playwright @axe-core/playwright && npx playwright install chromium')
   console.error(`  (tried this script's dir, ${process.cwd()}, and silver: ${e.message.split('\n')[0]})`)
-  process.exit(4)
+  process.exit(65) // 65 = missing dep
 }
 
 // Runs inside the page. Geometry only — nothing here is an opinion.
@@ -288,7 +294,15 @@ for (const theme of themes) {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
   } catch {
     waited = 'load + 3s'
-    await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
+    try {
+      await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
+    } catch (e) {
+      // Neither wait target reached the page at all. That is a harness failure, not a design
+      // verdict: exiting with a small number here would be read as a violation count.
+      console.error(`✗ design-audit: could not navigate to ${url} — ${e.message.split('\n')[0]}`)
+      await browser.close()
+      process.exit(66) // 66 = navigation failed
+    }
     await page.waitForTimeout(3000)
   }
 
@@ -357,4 +371,6 @@ if (themes.length > 1) {
 if (asJson) console.log(JSON.stringify({ ...report, failures }, null, 2))
 else console.log(failures === 0 ? '\n✓ design-audit: ALL CHECKS PASS' : `\n✗ design-audit: ${failures} failed check(s)`)
 
-process.exit(failures)
+// Contract: 1–63 is the violation count; clamp so a count can never be read as a harness code.
+if (failures > 63) console.log(`  (exit code clamped to 63; ${failures} failed check(s) found)`)
+process.exit(Math.min(failures, 63))

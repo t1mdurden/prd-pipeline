@@ -1026,7 +1026,7 @@ export function Header() {
 
 ## Corpus grounding — command palette (2026-07-05 research)
 
-Sourced from `docs/research/notes/product-app-ui-patterns.md` → **## Command menus (Cmd-K palettes)**.
+Sourced from the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → **## Command menus (Cmd-K palettes)**.
 This section grounds the recipe above with copyable rules + concrete values from the corpus, and
 carries its source flags forward. The recipe's guidance stands; this is additive. Primary sources
 behind these values: **shadcn/ui `command.tsx` / `dialog.tsx` + cmdk + Raycast/Superhuman/VS Code

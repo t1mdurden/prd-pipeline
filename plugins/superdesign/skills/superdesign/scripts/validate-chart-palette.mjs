@@ -5,10 +5,14 @@
 // for BOTH modes, and runs the six computable checks. Colour is computable, so it is
 // computed: never eyeball whether a palette is colourblind-safe.
 //
-//   node scripts/validate-chart-palette.mjs                    # the shipped theme
-//   node scripts/validate-chart-palette.mjs path/to/theme.css  # a generated one
+//   node .claude/skills/superdesign/scripts/validate-chart-palette.mjs                   # shipped theme
+//   node .claude/skills/superdesign/scripts/validate-chart-palette.mjs path/to/theme.css # a generated one
 //
-// Exit 0 = every check passes in both modes. Non-zero = the count of failed checks.
+// EXIT-CODE CONTRACT — identical in every superdesign gate (ARCHITECTURE.md §2):
+//   0        clean
+//   1–63     the number of violations. A count above 63 is clamped to 63 and the line says so.
+//   64–79    harness error — 64 usage · 65 missing dep · 66 navigation failed · 67 no target
+// Here a violation is one failed check in one mode.
 // A WARN is not a failure but it is an obligation: a slot under 3:1 must carry relief
 // (a direct label, a 2px surface gap, or a table view). Never colour alone.
 //
@@ -150,8 +154,15 @@ function checkMode(mode, tokens) {
   return { mode, fails, lines, hexes: cols.map((c) => toHex(c.lin)), surfaceHex: toHex(surface) }
 }
 
-const file = process.argv[2] || new URL('../.claude/skills/superdesign/assets/theme.css', import.meta.url).pathname
-const css = readFileSync(file, 'utf8')
+// The script lives inside the skill package now, so the shipped theme is one level up, not four.
+const file = process.argv[2] || new URL('../assets/theme.css', import.meta.url).pathname
+let css
+try {
+  css = readFileSync(file, 'utf8')
+} catch (e) {
+  console.error(`✗ chart palette: cannot read ${file} — ${e.message}`)
+  process.exit(67) // 67 = no target
+}
 
 // Non-greedy to the first `}`: a token block never nests, and requiring a newline
 // before the brace made single-line blocks invisible to the parser.
@@ -180,4 +191,6 @@ for (const [mode, tokens] of modes) {
 console.log(total === 0
   ? `\n✓ chart palette: ALL CHECKS PASS (${checked} mode${checked === 1 ? '' : 's'})`
   : `\n✗ chart palette: ${total} failed check(s)`)
-process.exit(total)
+// Contract: 1–63 is the violation count; clamp so a count can never be read as a harness code.
+if (total > 63) console.log(`  (exit code clamped to 63; ${total} failed check(s) found)`)
+process.exit(Math.min(total, 63))

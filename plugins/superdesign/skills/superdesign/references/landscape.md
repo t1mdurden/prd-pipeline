@@ -101,7 +101,13 @@ How to build ON shadcn/ui without fighting it:
 - **Compose small parts, don't prop-explode.** Assemble `Card` + `CardHeader` + `CardTitle` +
   `CardContent`; a component with 15 boolean props is a smell — split it.
 - **`cn()` = `clsx` + `tailwind-merge`.** Thread `className` **last** so callers can override, and
-  never hand-concatenate class strings (the later Tailwind class must win the merge).
+  never hand-concatenate class strings (the later Tailwind class must win the merge). **If the
+  theme's `@theme` block defines any `text-*` size beyond Tailwind's stock `xs`…`9xl` — `text-hero`,
+  `text-label`, any semantic name — then `lib/utils.ts` MUST build `cn()` from
+  `extendTailwindMerge({ extend: { theme: { text: [...] } } })`, never bare `twMerge`.** Plain
+  `twMerge` cannot tell a custom text-size class from a text-color class and silently drops the
+  loser of that guess: `cn('text-hero text-primary')` returns only `'text-primary'`, with no error.
+  The literal config and the gate that keeps it current are in `tokens.md` §4.
 - **Variants via `cva`** (`class-variance-authority`) — encode `variant`/`size` as variants, not
   ad-hoc conditionals; expose them as typed props.
 - **Polymorphism via `asChild`** (Radix `Slot`) or **`render`** (Base UI) — e.g. a link-button:

@@ -15,515 +15,293 @@ license: MIT
 
 # superdesign
 
-A design-system *generator*, not a fixed theme.
-
-**Requires** React 19, Tailwind CSS v4 (CSS-first, no `tailwind.config.js`), and shadcn/ui
-new-york style. Tailwind v3 is not supported. Phases 5–6 and reference mining need a browser:
-**`Skill(silver)` is the default** (→ Phase 0); chrome-devtools MCP or a project-local Playwright
-also work.
-
-## Non-negotiables
-
-These 12 apply to every UI task, from this line onward — not at the end. Everything else in this
-file is elaboration. Phases 4–6 are how you *verify* these, not when they start applying.
-
-1. MUST write the token file before any component markup.
-2. MUST author color in OKLCH and use shadcn semantic names only in markup (`bg-primary`, never
-   `bg-zinc-900`, never a raw hex).
-3. MUST name the aesthetic in one phrase before choosing anything ("warm editorial", "precise
-   fintech"). A named aesthetic is the input to every later decision.
-4. MUST put the saturated brand hue in the ~10% accent role, not across surfaces.
-5. MUST compose screens from `references/cookbook/` recipes. Read the recipe first.
-6. MUST keep every spacing value on the 4px grid, and keep card padding ≤ inter-card gap.
-7. MUST carry hierarchy with weight + gray level before size or color; the screen reads correctly
-   in grayscale.
-8. MUST ship rest / hover / active / focus-visible / disabled / loading for every interactive
-   element, plus empty and error where data can be absent.
-9. MUST route all motion through the two named curves — `--ease-out-quint` for entrances,
-   `--ease-ios` for micro-interactions — keep UI motion ≤ 300ms (Phase 3 names the one carve-out),
-   and animate only `transform` and `opacity`. Use 0ms for keyboard-initiated surfaces (⌘K, menus,
-   filters).
-10. MUST ship a visible `:focus-visible` outline (2–3px solid, `outline-offset: 2px`) and pass
-    4.5:1 text contrast in light AND dark.
-11. MUST run the gate commands named in Phases 4 and 5 before claiming done. Each must exit 0.
-12. MUST use real domain copy. No lorem, no fake testimonials, no unsourced stats.
+A design-system *generator*, not a fixed theme. **This file is a router:** six phases plus a
+conditional polish pass, each fired by a file on disk or an exit code, never by a judgement. What a
+machine can decide lives in `scripts/`; what it cannot lives in `references/`, opened only by the
+phase that names it — a pointer here is a command, and where a reference opens with `## Contents`,
+read that list first and pull only the section you need. **Requires** React 19, Tailwind v4
+(CSS-first, no `tailwind.config.js`), shadcn/ui new-york — v3 is not supported, stop and say so.
+Phases 0/4/5 need a browser: **`Skill(silver)` is the default**, a local headless Playwright every
+script borrows before asking you to install one, so only axe is missing
+(`npm i -g agent-silver && npm i -D @axe-core/playwright`). A product surface needs `npm create vite`
++ `shadcn init` first, outside the loop; `examples/app-ui/` is one built on the real stack, resolved
+from the **repository root**, not from this skill directory.
 
 ## Project state (auto-injected — this is ground truth, do not re-derive it)
 
 ```!
 test -f package.json && node -e "const p=require('./package.json');const d={...p.dependencies,...p.devDependencies};for(const k of ['tailwindcss','react','next','motion','framer-motion','lucide-react','sonner','tw-animate-css','class-variance-authority','tailwind-merge'])if(d[k])console.log(k+' '+d[k])" 2>/dev/null || echo "no package.json — static mock-up target"
 test -f components.json && cat components.json || echo "no components.json — shadcn not initialised"
-grep -l -r --include=globals.css --include=theme.css -e '@theme' . 2>/dev/null | head -3 || echo "no Tailwind v4 @theme block found — Phase 1 has not run"
+T=$(grep -l -r --include=globals.css --include=index.css --include=theme.css --exclude-dir=node_modules --exclude-dir=.claude --exclude-dir=.git -e '@theme' . 2>/dev/null | head -3); [ -n "$T" ] && echo "$T" || echo "no Tailwind v4 @theme block found — Phase 2 SYSTEM has not run"
 ```
 
-No `@theme` file above means **Phase 1 has not run and no markup may be written**. Tailwind v3
-means stop and say so — this skill targets v4 only. If the block rendered as `[shell command
-execution disabled by policy]`, read those three files by hand before starting Phase 1.
-
-## What this does
-
-**The default failure mode of any model is convergence on the statistical center of every SaaS
-template it was trained on.** Everything below exists to defeat that one thing. The tells live in
-`references/anti-slop.md` and deliberately not here — naming one while generating raises its own
-probability.
-
-**Separate the three jobs.** Slop comes from fusing them in one prompt: (1) *taste direction* —
-what should this feel like, (2) *exploration* — what are the options, (3) *spec/build* — what
-exactly to build. Do them in order, in separate phases. **Self-diagnostic:** reacting to your own
-output with adjectives ("cleaner", "more premium", "less generic") means the jobs are still fused —
-stop and go back to Phase 1.
-
----
+It runs in the **target project** and excludes `.claude/`, so this skill's own `assets/theme.css` can
+never be read as a host theme. The "has not run" line means **Phase 2 has not run and no markup may
+be written** — that probe is how "tokens before markup" is enforced now. If it printed
+`[shell command execution disabled by policy]`, read those three files by hand.
 
 ## The loop
 
-Run these phases **in order** for any UI task. Never skip to markup. Paste this checklist into your
-working notes and check each box before moving on.
+| Phase | Fires when | BUILD | REDESIGN | COMPOSE |
+|---|---|---|---|---|
+| **0 RECON** | always, first | measure 3–6 refs | measure the target | measure the library's demo |
+| **1 DIRECTION** | `recon.json` exists | ✓ | ✓ + differentiation target | ✓ |
+| **2 SYSTEM** | `DESIGN.md` exists | ✓ | ✓ | ✓ + merge the item's `cssVars` |
+| **3 COMPOSE** | tokens compile | cookbook | reuse tree, re-token | **fork: `import-gate.mjs`** |
+| **3b POLISH** | markup exists, past one component | ✓ | ✓ | ✓ |
+| **4 GATE** | markup exists | ✓ | ✓ | ✓ |
+| **5 RANK** | the build renders | ✓ | ✓ (the point) | ✓ |
 
-```
-[ ] Phase 1  Brand → brief → preset → tokens exist and are committed to CSS
-[ ] Phase 2  Screen composed from cookbook patterns using semantic tokens only
-[ ] Phase 3  Polish pass: spacing rhythm, optical alignment, full state matrix, motion
-[ ] Phase 4  Anti-slop gate passed (script exits 0; three forked candidates judged)
-[ ] Phase 5  Accessibility gate: palette + render commands exit 0; the rest judged by hand
-[ ] Phase 6  Rendered and inspected: screenshot read at 1440 + 390, a11y audit clean, console clean
-[ ] Quality bar met (see end)
-```
+**Two forks total, both explicit: Phase 0's three modes, and `import-gate.mjs` in Phase 3.** Every
+phase fires on a file, so every file has one path, one writer, one reader:
 
-**Default to discussion for the first turn of any new surface.** Produce the Design Brief and one
-sentence of layout intent, then stop — unless the user used an action word (build, implement, code,
-make it, ship). Ambiguity resolved before Phase 2 is free; ambiguity resolved after Phase 3 costs a
-rebuild. If one thing is genuinely unclear, ask once, then proceed on a stated assumption. Never
-ask twice.
+- **recon** → `recon.json`, project root, plus one `ref/<name>.{json,md}` per reference. Phase 0
+  writes; Phase 1 and `--check` read.
+- **Design Brief** → **`DESIGN.md`**, project root. Phase 1 writes by hand; Phases 2–5 read; it is
+  also where the AS-01b accent exemption is declared.
+- **theme CSS** → `app/globals.css` (Next) or `src/index.css` (Vite). Phase 2 writes it, from the
+  `assets/theme.css` scaffold plus a seeded ramp; `palette.mjs --check`, `validate-chart-palette.mjs`
+  and `check-tw-merge-tokens.mjs` read it.
+- **forks** → `design_iterations/{surface}_{1,2,3}.tsx`, winner iterated as `{surface}_{n+1}`.
+- **pulled registry item** → `.superdesign/pull/`, quarantine outside `src/`. Phase 3 writes it with
+  `shadcn add -p`, `import-gate.mjs` reads it, and only a clean gate lets it into `src/`.
+- **measurements** → `ref/<name>.json` (theirs), `ref/ours.json`, from `extract-reference --out`; and
+  `ref/theirs.css` from
+  `palette.mjs --seed '<their accent, from recon.json>' | sed '/^generated ramp/,$d' > ref/theirs.css`,
+  the only reference CSS the skill can produce and so the only thing `--harmony` can compare against.
+- **the served route** → `npm run dev`; its URL is every `--url` below.
 
-**App-UI targets need a scaffold first — a one-time pre-step, NOT part of the loop.** For a real
-React + Tailwind v4 + shadcn/ui *product* surface (dashboard, data table, ⌘K palette), run
-`npm create vite` + `shadcn init` **before** Phase 1 — the loop starts at tokens and assumes a host
-app already exists. A static single-file mock-up skips this. A built reference composing the
-app-shell / data-table / command-menu recipes on the real stack lives at `examples/app-ui/`,
-resolved from the **repository root**, not from this skill directory.
-
-Add the Phase-5/6 render dependencies in the same pre-step. **`Skill(silver)` is the default
-browser**: it is a local headless Playwright, and every script here borrows its engine from silver
-before asking you to install one, so only axe is missing.
+**0 RECON — measure the field, and prove you measured.** One script, three modes, one schema.
 ```bash
-npm i -g agent-silver && npm i -D @axe-core/playwright
-# no silver:  npm i -D playwright @axe-core/playwright && npx playwright install chromium --with-deps
+node .claude/skills/superdesign/scripts/recon.mjs --refs <a,b,c> --steal "…" --steal "…" --steal "…"  # BUILD: one --steal per ref, in order
+node .claude/skills/superdesign/scripts/recon.mjs --target <url> --steal "…"          # REDESIGN
+node .claude/skills/superdesign/scripts/recon.mjs --registry <item> --url <demo-url>  # COMPOSE: give the demo URL — a bare name is guessed at; a page that is not there now exits 66 rather than measuring
+node .claude/skills/superdesign/scripts/recon.mjs --check                             # the gate
 ```
-The audit script is committed to the repo, not regenerated per run: a script costs zero context and
-only its output enters the window.
+No `recon.json`, no Phase 1 — `--check` exits 1. Every entry carries its own "what we take from it"
+line, four distinct words minimum, no two alike; an empty one fails exactly as a missing measurement
+does, because measuring three sites and taking nothing from them is recon as ritual. REDESIGN has no
+offline escape — the target *is* the input and a redesign from memory is recall. BUILD without a
+browser hand-writes `recon.json` flagged `measured:false`, so Phase 5 reports "no reference" rather
+than a fabricated 6-of-6.
 
----
+**1 DIRECTION — fires when `recon.json` exists.** The one judgement phase. Read
+`references/brand-to-system.md` (and `references/reference-mining.md` for what a measured product
+licenses); write ONE binding Design Brief to **`DESIGN.md`** — named aesthetic, the six spectrum
+floats, all 15 fields of that file's template, the five dials (`DESIGN_VARIANCE`, `MOTION_INTENSITY`,
+`VISUAL_DENSITY`, `GRID_DISCIPLINE`, `TEXTURE_LEVEL`) later phases read and never re-derive. A value
+contradicting the brief is a defect, not a preference; a blank field is a blocked phase. **State the
+font choice out loud here**; if two brand moods conflict, force a priority, never average them into
+mush. `ultrathink` here. **Skip the brief only when** the work is backend with no surface · a minor
+tweak to an already token-driven screen · the user supplied mockups or a complete spec. A preset is a
+*complete design language*: retrieve it, then override its primitives to the brand seed rather than
+shipping it as found. **REDESIGN also sets the differentiation target:** which of `--diff`'s six axes
+MUST move away from the measured original — that contract set *before* building, rather than a check
+run after, is the change. *Cold start*, a surface named and nothing else: read
+`references/direction.md` and run its three-question intake, which never blocks. Discuss rather than
+build on the first turn of a new surface unless the user used an action word; if one thing is
+genuinely unclear ask once, then proceed on a stated assumption — never ask twice.
 
-## Reference map
+**2 SYSTEM — fires when `DESIGN.md` exists. Retrieval, never recall:** a recalled preset is invented
+plausible OKLCH, the convergence this skill exists to defeat.
+```bash
+cp .claude/skills/superdesign/assets/theme.css app/globals.css                                    # the @import + @theme scaffold
+node .claude/skills/superdesign/scripts/palette.mjs --seed 'oklch(0.55 0.15 265)' | sed '/^generated ramp/,$d'   # the ramp, without the census
+node .claude/skills/superdesign/scripts/palette.mjs --check app/globals.css                        # AFTER the ramp is pasted in — the bare scaffold exits 2
+```
+`--seed` writes nothing and prints two things: the `:root` + `.dark` ramp, then a contrast census
+that is a report, not CSS — hence the `sed`. The ramp is not a theme on its own, so paste its two
+blocks over the copied scaffold's own `:root` and `.dark`; the scaffold is what carries
+`@import "tailwindcss"` and the two `@theme` blocks the probe looks for. Seeds come from
+`data/theme-seeds.json` — every row the
+literal `globals.css` a real `npx shadcn@latest init -p <code>` wrote — and faces from
+`data/google-fonts.min.json`; both are stamped caches, so **no phase blocks on a network call.**
+`references/tokens.md` §0–§3 owns the three-tier system, the
+`base = surface / -foreground = text-on-surface` pairing, the one-way
+`component → semantic → primitive` chain, the `@theme` scaffold and the hard caps (**3–5 colours, ≤2
+font families, 60-30-10**). Dark re-points the same semantic names under `.dark`: a second authored
+ramp, never an inversion. In COMPOSE, `shadcn add` merges the item's `cssVars` into that same file —
+re-run `--check` after; the item's accent does not outrank the brief's. Gate: `palette.mjs --check`
+exits 0, a full fg/bg census in both modes rather than a five-row sample.
 
-**Read the file named in each phase before doing that phase's work.** A pointer here is a command,
-not a citation. Load a reference only when its phase needs it — these are large. Where a file opens
-with a `## Contents` list, read that first and pull only the section you need.
+**3 COMPOSE — fires when the tokens compile.** The largest fork. **Scope-lock first:** enumerate every
+screen, section, state and component and write the count into your working notes *before* markup,
+then cross-check it before "done" — the missing-step class Plan-and-Solve (arXiv 2305.04091) and
+DCGen (arXiv 2406.16386) both target, and one no gate can see, because a gate only reads files that
+exist.
+- **BUILD** — compose from `references/cookbook/`: 15 recipes, landing · app · flow, plus
+  `texture.md` at `TEXTURE_LEVEL` > 0. Read the recipe first; write the real copy into `content.ts`
+  before the first div. Fork exactly 3 on a **declared** axis, never on sampling noise — A = cookbook
+  default at the dials, B = `DESIGN_VARIANCE` +3, C = `VISUAL_DENSITY` +2 — into `design_iterations/`;
+  name the winner and the one property carried over from each loser, then iterate only the winner.
+  N=3 is the ceiling (`references/verification.md`).
+- **REDESIGN** — keep the component tree, replace values with tokens. The diff is the design.
+- **COMPOSE** — `npx shadcn@latest add <item> -p .superdesign/pull`, then
+  `node .claude/skills/superdesign/scripts/import-gate.mjs .superdesign/pull` **before the file
+  enters `src/`**: retrieval is not a shortcut past the anti-slop pass. Of ten components pulled from
+  three registries, 4 built at all, 0 of the 7 that could be gated passed, 15 of 15 shipped no
+  reduced-motion gate. Non-zero → repair it or degrade to the cookbook.
 
-| File | Load when building | Read it for |
+`references/landscape.md` owns `cn` / `cva` / `asChild` / `data-slot`. Add a `cva` variant, never a
+call-site override — shadcn's `outline` variant has a transparent background, so `text-white` on it
+is invisible; define a variant carrying both surface and foreground. Never fork `components/ui/*`.
+One primary action per screen; let content dictate card count, and prefer asymmetric/editorial to
+centred-everything where the brand allows. Wire a11y while composing — `main`/`header`/`nav` over
+`div`, correct roles, `sr-only`, `alt`. **Four Tailwind hygiene laws — author-side rules, nothing
+downstream catches them for you:** never mix margin/padding with `gap` on one element · use `gap`,
+never `space-x-*`/`space-y-*` · `text-balance` on headlines, `text-pretty` on lead paragraphs · the
+page background on the root element, `<html className="bg-background">`. Run Phase 4 at the END of
+this phase, to catch a defect before it is copied into nine more components.
+
+**3b POLISH — fires when markup exists and the surface is past a single component.** What separates
+designed from generated. Read in this order, each constraining the next: **`references/tokens.md` §5**
+spacing rhythm (4pt ramp, `internal ≤ external`, optical nudges) · **§4** typography (three gray
+levels, weight/size extremes, tracking, measure, emphasis-by-de-emphasis) · **§6–§7** elevation (one
+light source by role, border-first for resting surfaces, lighter surface in dark) · **§10**
+interaction states (three non-colliding axes, one on-colour overlay, all six states enumerated
+*before* the component, empty states as a deliverable) · **§11** app-UI defaults on a product surface
+(density tiers, 0ms ⌘K, full-opacity focus ring, tabular-nums). Motion here is MUST 7's numbers —
+`--ease-out-quint` for entrances, `--ease-ios` for micro-interactions, **≤300ms**, the one carve-out a
+cross-view transition (shared-element morph, route change) at **300–400ms**, `transform`/`opacity`
+only. **Conditional loads:** `references/motion.md` when the surface has bespoke or interactive motion
+(gestures/drag, drawers/sheets, hero or cross-view transitions, orchestrated reveals) — it owns the
+animation-review ship gate each of those must clear;
+`references/motion-platform.md` only when the effect needs a platform primitive (View Transitions,
+`@starting-style`, `interpolate-size`, scroll-driven). Re-run Phase 4 at the end of this phase.
+
+**4 GATE — fires when markup exists. One command, then one lens.**
+```bash
+node .claude/skills/superdesign/scripts/gate.mjs <dir> [--url <route>]
+bash .claude/skills/superdesign/scripts/anti-slop-gate.sh --lens --exclude '(^|/)(node_modules|dist|build|\.next|\.turbo|coverage|ui)/' <dir>
+```
+Scope is resolved ONCE and inherited by every child, which is what ended the two halves' disagreement
+about `ui/` (F7, F4). **The lens must carry the same `--exclude` or it re-opens F7:** bare, it reports
+44 files where `gate.mjs` reports 21 on `examples/app-ui/src`, the extra 23 vendored
+`components/ui/*`. **Do not self-assess the gate: the greps are the oracle** — a self-review with no
+external signal measurably degrades output. **A failure prints the rule `id` and its `failureMode`
+from `data/anti-slop-rules.json`**, SSOT for the machine-checkable half of the catalog, so never open
+81 kB of prose to learn what a red line means. `--url` adds the rendered gate; without it geometry and
+contrast go unchecked, and an unrun gate is not a passed gate. The lens is for what a grep cannot see,
+the *absence* of a behaviour: mouse-only, no state machine, decorative colour where spacing and weight
+should carry hierarchy, one fixed density, an animated ⌘K. Load `references/anti-slop.md` § APP-UI for
+that pass only; past a single component run `references/critique.md`'s process (two isolated
+assessments, P0–P3 severity, the Alex + Sam personas, the redesign ladder) and
+`references/accessibility.md` for what axe marks *incomplete*. The one exemption: a blue-violet brand
+declares its accent in `DESIGN.md` and AS-01b skips it — never widen or silence a detector.
+**The tells live in `anti-slop.md` and deliberately not here**, because naming one while generating
+raises its own probability. A build prompt carries only the positive form: the face named in TYPE, the
+PALETTE hues in their declared roles, a content-driven layout at the brief's DIALS carrying its one
+TENSION, the strings already in `content.ts`. The ban list is audit-only — read it when you review,
+never when you write.
+
+**5 RANK — fires when the build renders.** The extractor that measured the reference now measures us,
+so "we changed it enough" stops being a claim and becomes a count.
+```bash
+node .claude/skills/superdesign/scripts/extract-reference.mjs --url <dev-url> --theme dark --out ref/ours
+node .claude/skills/superdesign/scripts/extract-reference.mjs --diff ref/<reference>.json ref/ours.json
+node .claude/skills/superdesign/scripts/palette.mjs --harmony ref/theirs.css app/globals.css
+```
+`--diff` takes exactly two files: with 3–6 BUILD refs, diff against the one `DESIGN.md` names as
+primary. Three rankings, none claiming to rank two whole designs — nothing in the field can:
+**differentiation** (exit 0 needs ≥3 of 6 mechanics moved, accent hue never within 10° of the
+reference's), **system maturity** (how many tokens each side NAMES), **harmony** (huemint on one
+literally fixed request; prints `harmony: unavailable` offline and never gates). Then look:
+`Skill(silver)` at **1440×900 and 390×844**, light and dark, after `networkidle` — earlier captures an
+empty shell and a false pass. Read the screenshots against `DESIGN.md`, not your memory of the code,
+for what only vision catches: **horizontal overflow at 390px is a critical failure**, a clipped
+popover, text colliding with a container edge, a squint-test hierarchy failure, the grayscale read.
+Console errors and a failing Lighthouse accessibility score both block done. **Repair once per new
+signal, then stop** — fix every P0/P1, re-run, exit 0 or stop and report; every extra loop must
+introduce a signal the last lacked, and by pass 3 model critique is measurably worse than the design.
+
+## The MUSTs
+
+Each carries its failure mode — a rule whose cost is unstated is a rule that gets skipped.
+
+1. **Name the aesthetic in one phrase before choosing anything** ("warm editorial", "precise fintech",
+   "neobrutalist terminal"). *Fails as:* a weak brand vector defaults to SaaS-minimal, the exact
+   statistical centre this skill exists to defeat. "Clean and modern" is an adjective, not a direction;
+   it fails silently and looks like compliance. No script can decide whether a phrase is an aesthetic.
+2. **Take the least-probable direction that still clears the brief. Never average three candidates** —
+   which must differ on ALL of MOVEMENT, accent hue family, radius base and grid discipline, or "least
+   probable of three" is unfalsifiable. *Fails as:* the mean of the training distribution, arrived at
+   by a procedure that looks like diversity. Unmeasurable — the probability here is the model's own
+   estimate of its own prior.
+3. **Carry hierarchy with weight and gray level before size or colour; the screen must read in
+   grayscale.** *Fails as:* colour-carried hierarchy that passes every contrast gate and still reads
+   flat. A VLM judge may not assert spacing, alignment or size ratios — four SOTA VLMs average 58% on
+   shape-position tasks — so gate and judge are both structurally blind to this one.
+4. **Real domain copy. No lorem, no fake testimonials, no unsourced stats.** *Fails as:* a plausible
+   fabricated statistic, which reads as real to every gate. AS-09 and AS-12b catch stubs and
+   placeholder faces; nothing catches an invented number. Field-run F11: typecheck, build, three grep
+   gates and the contrast solver green while the hero was visibly broken.
+
+**Four more are MUSTs because the script named as their enforcer does not contain the check.** Each
+goes back to an exit code when its check lands (ARCHITECTURE §2, commits 4–7); until then a MUST beats
+a mapping to a green exit that decides nothing.
+
+5. **Put the saturated brand hue in the ~10% accent role, not across surfaces** — 60-30-10: ~60%
+   neutral surface, ~30% secondary, ~10% accent, which signals "act here" *because* it is scarce.
+   *Fails as:* a brand wash over every surface, every gate green. `extract-reference.mjs` does
+   compute `palette.accentShare` for our own build too — what no script owns is the *threshold*, so
+   the number is reported and nothing refuses a 40% accent. Read it in Phase 5 and judge it.
+6. **Every spacing value on the 4px grid, and card padding ≤ inter-card gap (`internal ≤ external`).**
+   *Fails as:* card contents crowding their neighbours' — grouping reads inverted while no single
+   value is out of range. `design-audit.mjs` computes the grid half (`off4`, cap 8); the
+   `internal ≤ external` half exists in no script.
+7. **Route motion through the two named curves, ≤300ms (cross-view 300–400ms), 0ms for
+   keyboard-initiated surfaces, `transform`/`opacity` only.** *Fails as:* a 600ms `all` ease-in-out
+   that reads as latency. `spring-tokens.mjs --check` exits 0 on a CSS file with no motion tokens at
+   all and `gate.mjs` does not run it; `design-audit.mjs` catches `transition: all`, nothing else.
+8. **Author colour in OKLCH; in markup use shadcn semantic names** — `bg-primary`, never `bg-zinc-900`,
+   never a raw hex. *Fails as:* a screen the theme cannot restyle and a dark mode that drifts from
+   light. Raw hex hard-fails and AS-01/01b/01c cover the purple family; every other palette family
+   (`bg-zinc-900`, `text-gray-400`, `border-slate-700`) passes clean in BUILD mode. `import-gate.mjs`
+   IG-05 catches it, and only on pulled registry files.
+
+**The other four moved and are decided:** tokens before markup → the `@theme` probe · compose from the
+cookbook → `import-gate.mjs`, in the one mode where it can be violated · the full state matrix →
+AS-20 + `--lens` · `focus-visible` + 4.5:1 in both themes → `design-audit.mjs`'s focus probe + AS-11 +
+axe, with one hole to cover by hand: that probe accepts any `box-shadow`, so a Tailwind `ring-*` used
+as the indicator passes and is still a defect — the ring is an `outline`, 2–3px solid,
+`outline-offset: 2px`. Run the gates before done → `gate.mjs`.
+
+## The scripts
+
+**One exit-code contract, every script:** `0` clean · `1–63` the violation count, clamped at 63 ·
+`64–79` harness error (64 usage · 65 missing dep · 66 navigation failed · 67 no target). A gate that
+returns 4 means four violations, never "Playwright is missing". They live in
+`.claude/skills/superdesign/scripts/`; the seven older ones keep a repo-root symlink for one release.
+
+| Script | What it decides | 1–63 means |
 |---|---|---|
-| `references/brand-to-system.md` | all | Phase 1: spectrum vector, **the DESIGN BRIEF template**, **the tweakcn preset catalogue**, the 7 archetype presets, the invariant layer, brand → decision rules, **the five design dials** |
-| `references/reference-mining.md` | a real product is the reference | Phases 1a & 4: finding comparable products, the 5-rung evidence ladder, `extract-reference.mjs`, the measured→brief mapping, the ten-surface transfer test, **the differentiation rule** |
-| `references/tokens.md` | all (§11 = app) | Phase 1 & 3: the complete OKLCH 3-tier system — color ramps, **the hard caps**, surfaces/elevation, the semantic `@theme` scaffold, typography, spacing + optical alignment, radius, shadow, interaction states, **§11 app-UI product defaults** (density tiers, 0ms ⌘K, full-opacity focus ring, tabular-nums) |
-| `references/motion.md` | all | Phase 3: motion craft depth, the duration/easing/spring values, and the **animation-review ship gate** — frequency gate, what to never animate, enter/exit + origin + stagger, interruptibility, reduced-motion-is-gentler |
-| `references/motion-platform.md` | all | Phase 3, only when the effect needs it: View Transitions, `@starting-style` and discrete transitions, `interpolate-size`, scroll-driven animation (`motion.md` owns feel and the gate; this owns the platform primitives) |
-| `references/landscape.md` | all | Phase 2: shadcn composition rules (`cn`/`cva`/`asChild`/`data-slot`, registry) + the tooling/registry ecosystem map |
-| `references/anti-slop.md` | all (§ APP-UI = app) | Phase 4: the **canonical (SSOT) named-defect catalog** — grep rules + judge-lens tells; imported by the gate script, the judge-lens, `critique.md`, and the eval judge |
-| `references/critique.md` | all | Phase 4: the review **process** — two isolated assessments, P0–P3 severity, Alex+Sam dashboard personas, the anti-laziness playbook + redesign ladder |
-| `references/accessibility.md` | all | Phase 5: the WCAG 2.2 AA checklist |
-| `references/performance.md` | all | Phase 5: the Core Web Vitals budgets and the design decisions that move them (`accessibility.md` owns conformance; this owns speed) |
-| `references/verification.md` | all | Phases 4–6: what counts as evidence — why a linter in the loop beats a re-read, why the DOM beats the screenshot, and the numbers behind the stop rule |
-| `references/cookbook/*.md` | landing · app · flow | Phase 2: 15 composable screen/section recipes indexed by output type in the Phase 2 list, plus `texture.md` for the TEXTURE_LEVEL dial |
-| `assets/theme.css` | all | Phase 1: the starter Tailwind v4 token theme (light + dark) — copy into `app/globals.css`, then swap the fonts and brand hue |
-| `Skill(dataviz)` | chart | Any chart, KPI tile, sparkline, or dashboard palette. Invoke the skill; do not improvise a series palette |
-
-**Never hold `anti-slop.md` + `critique.md` + `accessibility.md` in one window.** Combined they are
-150+ simultaneous constraints — the density at which primacy effects peak and errors shift from
-modification to omission (IFScale, arXiv 2507.11538). Phase 4a runs the detect rules as a script
-(zero context); Phase 4b loads only `anti-slop.md` § APP-UI; Phase 5 loads only `accessibility.md`,
-and only for the items the commands cannot decide. Put the two highest-stakes constraints FIRST and
-LAST in any prompt (arXiv 2307.03172).
-
----
-
-## Phase 1 — Brand → brief → tokens (system-first)
-
-Decide the aesthetic *before* writing any UI. Read `references/brand-to-system.md` before starting.
-
-**1a-0. Cold start — the user named a surface and nothing else.** Fires only when all three are
-absent: what the product does, who it is for, any named reference. Ask three questions in ONE
-message with each default already printed, then **build on those defaults in the same turn** — the
-intake never blocks and never waits for a reply. It spends the one clarification the first-turn
-rule allows, at the last point where an answer still moves a token.
-
-- **Q1 the room** — five plain situations plus a five-word blank, *"it lets someone ___"*. Sets the
-  six floats and yields the product noun that PROPOSITION, the audience and the non-UI anchor
-  descend from. A tautological blank ("use my app") counts as unanswered.
-- **Q2 the mistake you'd accept** — one forced choice between two named real products, six-word
-  behavioural glosses, plus an explicit "neither". Pins the archetype. **Neither side may be a
-  SaaS-minimal or Dark-premium exemplar** — the reflex lane is off the menu.
-- **Q3 the never** — five options drawn only from the movements that carry hard numbers. Sets
-  MOVEMENT, TENSION, one countable CONSTRAINT, GRID_DISCIPLINE and TEXTURE_LEVEL.
-
-**PROPOSITION is a commitment about the artifact, never a market claim** — "behaves like an
-instrument, not a dashboard", never "the fastest way to invoice". That is what keeps
-non-negotiable 12 satisfiable on a product nobody has described yet.
-
-Never default to SaaS-minimal because the vector is weak. The option tables, the room→float map,
-the archetype pairs, the movement lock and the anchor rule are in
-`references/brand-to-system.md` § The cold-start intake.
-
-**1a. Compress the brand into the ~6 spectrum floats** (−1…+1; the axes are named in
-`brand-to-system.md` § How the engine uses these). `ultrathink` here — this is one of the two
-judgement calls in the whole skill, and the floats make every downstream choice a pure function. If
-two brand moods genuinely conflict, force a priority; never average them into mush. **Name the
-aesthetic explicitly** ("warm editorial", "precise fintech", "neobrutalist terminal") — vague "clean
-and modern" invites the center. State the font choice out loud here.
-
-**If a real product is the reference — measure it, never recall it.** "Like Linear" from memory is
-an adjective wearing a product's name, and it goes beige like every other adjective. **Read
-`references/reference-mining.md`** for the ladder (a first-party `design.md` beats measuring), the
-three declared reference roles, and what to record. Capture with:
-
-```bash
-node scripts/extract-reference.mjs --url <reference-url> --theme dark --out ref/<name>
-```
-
-**1b. Emit three candidate directions with probabilities, then take the least probable that still
-satisfies the brief.** Write literally: *"Give me 3 complete art-direction briefs for this product,
-each with its probability of being the direction a generic model would produce. They must differ on
-ALL of: MOVEMENT, accent hue family, radius base, and grid discipline."* Take the LOWEST-probability
-candidate that clears every MANDATORY; never average them. The measured diversity gain and its
-caveat are in `brand-to-system.md` § The art-direction brief.
-
-**1c. Write the winning direction up as one binding Design Brief.** **The fenced template is in
-`brand-to-system.md` § The art-direction brief** — 15 fields, from PROJECT NAME through THE ANOMALY
-to MANDATORIES. Fill every one. If you write a Design Brief, you MUST follow it: every later phase
-cites it, a value that contradicts it is a defect rather than a preference, and a blank field is a
-blocked phase rather than a default.
-
-**Skip the brief only when:** the work is backend/API with no visual surface; it is a minor styling
-tweak to an existing token-driven screen; the user supplied mockups or an exact design to
-replicate; or the user provided a complete spec.
-
-**1d. Retrieve a starting preset — do not recall one.** A recalled preset is invented plausible
-OKLCH, which is the convergence this skill exists to prevent. **Read `references/brand-to-system.md`
-§ Retrieving a starting preset now** — it carries the tweakcn registry URLs, the verified catalog of
-preset names, the `registry:style` shape to expect, the offline fallback, and the radius personality
-dial. A preset is a *complete design language*, not a palette: override its primitives to the brand
-seed rather than shipping it as found.
-
-**1e. Generate the token system.** **Read `references/tokens.md` §0–§3 before writing the file** —
-those sections own the OKLCH ramps, shadcn's semantic vocabulary in full, the
-`base = surface / -foreground = text-on-surface` pairing rule, the one-way
-`component → semantic → primitive` chain, and the complete `@theme inline` scaffold. Dark mode
-re-points the *same* semantic names under `.dark`; it is a second authored ramp, never an inversion.
-
-**Apply color by 60-30-10:** ~60% neutral surface, ~30% secondary, ~10% saturated accent. Accent
-signals "act here" *because* it is scarce.
-
-> **Hard caps:** **3–5 colors total** (1 brand hue + 2–3 neutrals + 1–2 accents) and **≤2 font
-> families**. Never exceed either without the user asking. 60-30-10 does not prevent sprawl on its
-> own — a 9-hue palette can still be 60-30-10. The line-height band and the per-register body-size
-> floors that go with these caps are in `tokens.md` §0 → "Hard caps".
-
-**Set the five design dials** — `DESIGN_VARIANCE`, `MOTION_INTENSITY`, `VISUAL_DENSITY`,
-`GRID_DISCIPLINE`, `TEXTURE_LEVEL`. **Read `references/brand-to-system.md` § Design dials** for the
-ranges, what each one gates, the product-vs-marketing defaults, and the per-archetype readings. Set
-all five here and record them in the brief; Phases 2–4 read them and never re-derive them.
-
-**Phase 1 gate:** the token file compiles, every color role has a fg/bg pair, and light + dark both
-exist. Do not proceed until tokens are committed to CSS.
-
----
-
-## Phase 2 — Compose from cookbook patterns
-
-**Scope-lock first.** Before writing markup, enumerate every screen, section, state, and component
-and write the count into your working notes. Cross-check against that count before "done"
-(→ `critique.md` §3.3). This is the "missing-step error" class Plan-and-Solve targets (arXiv
-2305.04091); DCGen's segment-then-assemble wins 8–15% for the same reason (arXiv 2406.16386).
-
-**Write the real copy before the first div.** Commit the actual headline, sub, nav labels,
-empty-state text, and error strings to a `content.ts` before composing. Design2Code measures
-text-augmented prompting as the strongest non-self-revision method across every open model tested
-(arXiv 2403.03163 §4.1), and it removes `lorem` and `vague-headline` at the source, not at the gate.
-
-Do not invent layouts from scratch — compose from the vetted recipes in `references/cookbook/`.
-Each recipe carries a "when to use / when not to", anatomy, real shadcn code, states, and a11y
-wiring. Read the recipe before composing from it. All 15, by output type:
-
-- **landing** — `hero` · `marketing-sections` · `pricing` · `nav-header` · `cards` (bento) ·
-  `code-panel-hero` (dev-tool product hero)
-- **app** — `dashboard-shell` (sidebar + topbar) · `data-table` · `command-menu` (⌘K) ·
-  `settings-page`
-- **flow** — `auth` · `forms` (create / settings / validation) · `onboarding` · `empty-states` ·
-  `dialogs` (modals / sheets / confirms)
-- **any of the three, when `TEXTURE_LEVEL` > 0** — `texture` (the material layer, with parameters)
-
-**Composition rules.** Read `references/landscape.md` § Composition before composing. Compose small
-parts (`Card` + `CardHeader` + …), don't prop-explode; thread `className` last through `cn()`;
-reskin via tokens, never by forking `components/ui/*`.
-
-**Four Tailwind hygiene laws.** Never mix `margin`/`padding` with `gap` on the same element. Use
-`gap`, never `space-x-*`/`space-y-*`. Wrap headlines in `text-balance` and lead paragraphs in
-`text-pretty`. Put the page background on the root element: `<html className="bg-background">`.
-These four are author-side rules, not gate detectors — nothing downstream catches them for you.
-
-**Wire accessibility while composing, not after:** semantic elements (`main`, `header`, `nav`) over
-`div`; correct ARIA roles; `sr-only` for screen-reader-only text; `alt` on every image unless
-decorative or redundant.
-
-**Add a variant, never a call-site override.** A one-off `className` colour or size at a call site
-is a defect: if you need a different appearance, add a `cva` variant to the component. Known trap:
-shadcn's `outline` variant has a transparent background, so white text on it is invisible — define
-a real variant with both surface and foreground, do not patch it with `text-white` at the call site.
-
-**One primary action per screen.** Let content dictate card count and layout — do not reflexively
-emit three feature cards or an 11-card grid. Prefer an asymmetric/editorial layout over
-centered-everything where it fits the brand.
-
-**Always fork 3, never re-roll.** Generate exactly three candidates that differ on a DECLARED axis,
-not on sampling noise:
-
-```
-A = cookbook default at the Phase-1 dials
-B = DESIGN_VARIANCE +3   (asymmetric / editorial; centred hero banned)
-C = VISUAL_DENSITY +2    (compact tier; border-t/divide-y grouping)
-```
-
-N=3 is the ceiling — past it you pay linearly for a judge whose discrimination collapses exactly as
-candidates converge, which is why the axis is declared rather than sampled (the numbers:
-`references/verification.md`). Write to `design_iterations/{surface}_{1,2,3}.tsx`; name the winner
-and the one property carried over from each loser; iterate only the winner, as `{surface}_{n+1}`.
-
-**Run the Phase-4 gate at the end of this phase, not only at the end of the build** —
-`bash scripts/anti-slop-gate.sh src/`. The value is catching a defect before it is copied into nine
-more components.
-
----
-
-## Phase 3 — Polish pass
-
-This is what separates designed from generated. Work top-down; details last.
-
-**Every value and every craft rule this phase applies lives in `references/tokens.md`. Read these
-five, in this order, before touching the screen — each constrains the next:**
-
-1. **§5 spacing rhythm** — the 4pt ramp, `internal ≤ external`, and the optical-alignment nudges.
-2. **§4 typography** — the three gray levels, weight/size extremes, tracking, measure, and
-   emphasis-by-de-emphasis.
-3. **§6–§7 elevation** — one light source by role, border-first for resting surfaces, lighter
-   surface in dark.
-4. **§10 interaction states** — the three non-colliding axes, the single on-color overlay, all six
-   states enumerated *before* the component, empty states as a deliverable.
-5. **`references/motion.md` in full** — motion craft plus the animation-review gate that every
-   bespoke or interactive motion (gestures/drag, drawers/sheets, hero transitions, orchestrated
-   reveals) must clear before "done".
-
-Non-negotiables 6–9 are the floor; those sections are how you meet them. The one carve-out to the
-300ms cap is a **cross-view transition** (shared-element morph, route change) at **300–400ms** —
-sourced in `tokens.md` §8. Everything else stays under the cap.
-
-Re-run `bash scripts/anti-slop-gate.sh src/` at the end of this phase.
-
----
-
-## Phase 4 — Anti-slop gate
-
-Block "done" until this passes. `references/anti-slop.md` is the **canonical defect catalog (single
-source of truth)** — the gate script, this gate's judge-lens, and the eval judge all import their
-tells from it. Edit a tell there and nowhere else.
-
-**4a — run the gate. Do not self-assess it.**
-
-```bash
-bash scripts/anti-slop-gate.sh src/
-```
-
-A non-zero exit blocks "done"; the exit code is the number of distinct tells found. The script is the
-gate; `anti-slop.md`'s detector table documents what it checks. The greps are the **oracle** — a
-self-review with no external signal measurably degrades output (→ `references/verification.md`).
-
-**4a-bis — the differentiation gate, only when a real product was mined in Phase 1.** "We changed it
-enough" is exactly the claim a model makes about a clone, so it is a count — exit 0 requires **≥3 of
-6 mechanics moved** and the accent hue **never** within 10° of the reference's:
-
-```bash
-node scripts/extract-reference.mjs --url <your dev-server url> --theme dark --out ref/ours
-node scripts/extract-reference.mjs --diff ref/<reference>.json ref/ours.json
-```
-
-What may and may not be carried over, and what this gate cannot see: `references/reference-mining.md`.
-
-**The one brand exemption.** The OKLCH detector flags accent tokens in the **270–319°** hue window
-(measured off Tailwind: `blue-700` is 264.376, `indigo-500` is 277.117 — a plain-blue brand does not
-trip it). A genuinely blue-violet brand declares that token in a `DESIGN.md`; the gate then skips it
-and treats every other hit as a finding. That is the only exemption — never widen or silence a
-detector.
-
-**Numeric gate — two counts, not a sampled score.** A model that picks its own sample, applies its
-own criterion, and reports its own number has produced no evidence:
-
-```bash
-grep -rIoE '\b(p|px|py|m|gap|w|h)-\[[^]]+\]' src --include='*.tsx' --exclude-dir=ui \
-  | grep -vE '\[[0-9.]+ch\]|calc\(|var\(' | wc -l    # must be 0
-grep -rIoE 'className="[^"]*\[#[0-9a-fA-F]{3,8}\]' src --exclude-dir=ui | wc -l   # must be 0
-```
-
-**The exclusions are not leniency, they are correctness** — each was added after the grep failed
-this skill's own reference implementation:
-
-- `ch` is *mandated* by Phase 3 (`max-width: 66ch`, never a px width).
-- `calc()` / `var()` are how shadcn's primitives size themselves; `w-[var(--radix-select-trigger-width)]`
-  has no token form.
-- `--exclude-dir=ui` because `components/ui/*` is **vendored, not yours**. shadcn ships `w-[8rem]`
-  on its dropdown/select content, `h-[300px]` on the command list and `w-[2px]` on the sidebar rail.
-  Flagging those tells you to edit files that quality-bar item 7 forbids you to fork — the gate
-  would be demanding you break a different rule to satisfy it.
-
-**Read a survivor, do not just count it.** The target is *no hit that could have been a token*, not
-a raw zero, because those are different claims and only the first is achievable:
-
-- **A spacing or sizing value that has a token** is a Phase-1 defect. Repair the token baseline, do
-  not patch the component. The commonest form is an exact scale step written the long way —
-  `h-[13rem]` is `h-52`, `h-[320px]` is `h-80`, `w-[4.5rem]` is `w-18` — which is free to fix and
-  changes nothing on screen.
-- **A one-off component dimension** — a chart's fixed height, a data-table column width, a media
-  frame — has no token because it is not a spacing decision. Inventing a scale to absorb a handful
-  of single-use values renames the magic numbers instead of systematising them. Leave it, and say
-  in one line what fixes it.
-
-The count is a reading prompt. A screen with four justified fixed heights is fine; a screen with
-forty is a token baseline nobody wrote. Every screen must reference the one shared theme.
-
-**What to reach for.** Naming a forbidden token *while generating* raises its own probability, so the
-positive form is the only one that belongs in a build prompt — this list, not a ban list:
-
-- **type** — the face named in the brief's TYPE field
-- **color** — the brief's PALETTE hues in their declared roles
-- **layout** — content-driven, at the brief's DIALS, carrying the brief's one TENSION
-- **copy** — the strings already committed to `content.ts`. Litmus: *"Would the founder actually say this?"*
-
-The matching ban list is **audit-only** and lives in `references/anti-slop.md` § Good-defaults
-reference — every entry paired with its replacement. Read it when you review, never when you write.
-
-**4b — product-taste judge-lens** (catches what greps structurally cannot; `ultrathink` here). Load
-only `anti-slop.md` § APP-UI for this pass. Greps see textual tells; they cannot see the *absence*
-of a behavior. Review the screen against the judge-only tells there: **mouse-only** (no ⌘K, no
-keyboard row-nav, no shortcuts), **missing state machine** (focus/disabled/loading/empty/error not
-all present), **decorative color where hierarchy should come from spacing + weight**, **one fixed
-density** (no compact/comfortable tier), and **an animated ⌘K surface** (should open at 0ms). A
-screen that passes every grep and still reads generic has failed this lens — fix before "done".
-`bash scripts/anti-slop-gate.sh --lens src/` prints this checklist alongside the gate.
-
-**For anything past a single component, run the review harness in `references/critique.md`** — it
-owns the *process* (two isolated assessments, the Nielsen heuristics as yes/no, P0–P3 severity, the
-Alex + Sam personas for product surfaces, and the redesign ladder for "off but I can't say why").
-`anti-slop.md` stays SSOT for the *tells*.
-
----
-
-## Phase 5 — Accessibility gate
-
-**Phase 5 runs, it does not read.** Where a check is computable, compute it — never eyeball a
-number a command can produce. Two tiers.
-
-**Tier 1 — always available.** No install, no browser:
-```bash
-node scripts/validate-chart-palette.mjs app/globals.css   # the project's theme, not the starter
-```
-Exit 0 or the palette is not shippable; the exit code is the count of failed checks.
-
-**Tier 2 — the render gate.** Needs the Phase-0 dependencies:
-```bash
-node scripts/design-audit.mjs --url <route> --theme light,dark
-```
-Install them, or say in one line that this tier did not run — an unrun gate is not a passed gate.
-**Its caps are calibrated** — each set in the gap between the five gate-clean `examples/` and
-`scripts/fixtures/slopped-geometry.html` — so a non-zero exit is a block, not a suggestion. It also
-prints five **uncapped** numbers that measurably do not separate good work from slop: read them, do
-not gate on them. Never loosen a cap to pass a screen; fix the screen. Its axe section is
-authoritative — never re-derive contrast by inspection, and only what axe marks **incomplete** is
-yours to judge. The corpus behind every cap, and why a command outranks your own look at the screen:
-`references/verification.md` (§6 for the caps).
-
-WCAG 2.2 AA is the floor, not optional. Full checklist in `references/accessibility.md` — load only
-the items the commands above cannot decide.
-
-- **Contrast:** text ≥ 4.5:1 (large ≥ 3:1); UI/icon borders ≥ 3:1 in every state. Check in **light
-  AND dark**, across ~5 text styles. Gate on WCAG 2 ratios only: APCA is **not** in WCAG 3 — it was
-  removed from the draft in July 2023 — so an Lc figure is advisory and never overrides a WCAG 2
-  failure.
-- **Color is never the only signal** (errors, links, status, chart series need a second cue).
-- **Focus:** visible `:focus-visible` on every interactive element, `outline` `2–3px` solid with
-  `outline-offset: 2px`; never `outline:none` without a replacement, and never Tailwind's `ring-*`
-  as the indicator itself. Why `outline` and not `box-shadow` — three reasons, all decided:
-  `tokens.md` §10 → "Focus ring: `outline`, decided".
-- **Keyboard:** full operation, logical tab order, no traps, Esc closes overlays, skip link. Modals
-  trap focus while open and restore it on close.
-- **Native-first:** real `<button>/<a>/<input>`; ARIA only fills gaps. Any `role=`/`tabindex` is a
-  review flag.
-- **Reduced motion:** ship the `@media (prefers-reduced-motion: reduce)` reset by default, then opt
-  comprehension fades back in under `no-preference`. Reduce (cross-fade), don't delete feedback.
-- **Everything else is in `references/accessibility.md`** and axe decides most of it: target sizes
-  (§4 — SC 2.5.8 is an inscribed-square test, so a circle is not a square), labelling, form errors
-  and focus-on-submit, live regions, `aria-expanded`/`aria-controls`, and `font-size ≥ 16px` on
-  inputs. Read it for what axe marks incomplete; do not restate it from memory.
-
----
-
-## Phase 6 — Render and inspect
-
-Text review cannot see a broken layout. Before "done", look at the result.
-
-**In this environment:** use `Skill(silver)` to open the dev-server URL and capture at **1440×900
-and 390×844**, in **light and dark**. Read the screenshots against the Design Brief from Phase 1,
-not against your memory of the code.
-
-**Timing rule:** wait for `networkidle` before screenshotting or inspecting the DOM on any dynamic
-app. Screenshotting before network idle captures an empty shell and produces a false pass.
-
-**What you are looking for** — the defects only vision catches: horizontal overflow at 390px (a
-critical failure), a clipped popover, text colliding with a container edge, a squint-test hierarchy
-failure, whether the grayscale read still resolves. Console errors and a failing Lighthouse
-accessibility score both block "done".
-
-If no browser is available, say so in one line — do not claim the gate passed.
-
-**Stop rule for Phases 4–6: repair once per new signal, then stop.** Fix every P0/P1 the gate
-reports, re-run it, exit 0 or stop and report. **Every additional loop must introduce a signal the
-previous loop did not have** — a new script run, a new render, a human. Otherwise it is theatre. At
-most **two** model-critique passes on one screen: pass 1 finds real defects; by pass 3 the
-suggestions are measurably worse than the design. The measurements behind that, and the ablation
-that prices a checker in the loop, are in `references/verification.md`.
-
----
-
-## Master quality bar (definition of done)
-
-Ship only when **all** are true. This is the north star every phase serves.
-
-1. **Branded, not generic.** A stranger could name the aesthetic; nothing on the "Never ship" list
-   survives; the layout is content-driven, not the template mean. It survives the `critique.md`
-   harness (isolated A/B, no P0/P1 open) — not just the greps. If a real product was mined in Phase
-   1, `node scripts/extract-reference.mjs --diff <reference>.json <ours>.json` exits 0.
-2. **Systematic.** Every value comes from a token; both Phase-4 counts are 0; one theme drives every
-   screen; light + dark both real.
-3. **Hierarchical.** It reads correctly in grayscale — hierarchy carried by spacing, weight, and gray
-   level before size or color. `internal ≤ external` holds everywhere.
-4. **Complete.** Every interactive element has its full state matrix; empty/loading/error states
-   exist; real domain content, no lorem/placeholder.
-5. **Alive but restrained.** Motion goes through the two-curve vocabulary, ≤300ms (cross-view
-   transitions ≤400ms), transform/opacity only, one orchestrated reveal. Bespoke/interactive motion
-   cleared the `motion.md` gate: interruptible, faster-exit, reduced-motion gentler-not-gone.
-6. **Accessible — by exit code, not by claim.** `bash scripts/anti-slop-gate.sh src/`,
-   `node scripts/validate-chart-palette.mjs <theme.css>` and
-   `node scripts/design-audit.mjs --url <route> --theme light,dark` all exit 0. If the render gate
-   could not run, say so — an unrun gate is not a passed gate, and the WCAG 2.2 AA items it cannot
-   decide (contrast in both themes, visible focus, keyboard, targets, labels, reduced-motion) are
-   still yours.
-7. **Own-your-code.** Composed from shadcn primitives with semantic tokens; `className` threads last;
-   no forked `components/ui/*`.
-8. **Seen.** Phase 6 done: rendered at 1440×900 and 390×844, both themes, console clean.
+| `gate.mjs` | Phase 4 — every source check below, over one file list | the **max** over its children, never the sum |
+| `recon.mjs` | Phase 0 fired, and its steal lines are filled | missing measurements + empty steals |
+| `import-gate.mjs` | Phase 3's COMPOSE fork — a pulled item builds against our deps, is reduced-motion gated, `aria-hidden` on cloned repeats | blockers in the pulled file |
+| `anti-slop-gate.sh` | 24 source rules read from `data/anti-slop-rules.json` | hard rules that fired (`note` rules print, never count) |
+| `design-audit.mjs` | rendered geometry + axe; caps calibrated between the gate-clean `examples/` and `scripts/fixtures/slopped-geometry.html`, never loosened to pass a screen | failed caps + serious/critical axe violations |
+| `palette.mjs` | the OKLCH ramp, and a full AA census in both modes | failing fg/bg pairs + breached hard caps |
+| `validate-chart-palette.mjs` | chart-slot legality, including CVD simulation | failed checks, per mode |
+| `check-tw-merge-tokens.mjs` | `cn()` silently eating custom `--text-*` tokens | tokens `twMerge` will drop |
+| `spring-tokens.mjs --check` | spring `linear()` tokens against their generator | drifted tokens |
+| `extract-reference.mjs --diff` | Phase 5 differentiation over six mechanics | axes that did NOT move |
+| `check-pointers.mjs` | every path and anchor this package names | dead pointers |
+
+`design-audit.mjs` also prints five **uncapped** numbers that measurably do not separate good work
+from slop: read them, do not gate on them. Two pointers no phase carries: `Skill(dataviz)` for any
+chart, KPI tile or sparkline — invoke it, never improvise a series palette — and
+`references/performance.md` for the Core Web Vitals budgets. **Never hold `references/anti-slop.md` +
+`references/critique.md` + `references/accessibility.md` in one window:** together they are 150+
+simultaneous constraints, the density at which errors shift from modification to omission (IFScale,
+arXiv 2507.11538). Put the two highest-stakes constraints FIRST and LAST in any prompt you write
+(arXiv 2307.03172).
+
+## Done
+
+`recon.mjs --check`, `gate.mjs <dir> --url <route>` and `palette.mjs --check <theme.css>` exit 0, and
+where a reference was measured so does `extract-reference.mjs --diff`; no P0/P1 is open; the eight
+MUSTs hold — a stranger could name the aesthetic, the direction was the least probable one that
+cleared the brief, the screen reads in grayscale, the copy is real, the accent is scarce,
+`internal ≤ external` holds everywhere, motion is two curves under the cap, one theme drives every
+screen; and it was seen at both sizes in both themes with a clean console. A gate that could not run
+is named in one line, never counted as passed.

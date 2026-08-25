@@ -956,7 +956,7 @@ UXmatters label placement; Damian Wajer autosave vs. explicit save._
 > app-UI research corpus with copyable rules + specific values, and carries the corpus's own
 > confidence flags forward unedited. Where a rule below refines the recipe, prefer the recipe's
 > shadcn/Field wiring for the *how* and treat these as the *why + the number*.
-> _Source: `docs/research/notes/product-app-ui-patterns.md` → "## Complex & multi-step forms"._
+> _Source: the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → "## Complex & multi-step forms"._
 
 **Sourcing honesty (read before copying a value):**
 

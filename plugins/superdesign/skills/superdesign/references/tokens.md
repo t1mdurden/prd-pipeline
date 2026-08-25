@@ -498,6 +498,55 @@ outside a dense data view. This skill's declared product register is a dense das
 }
 ```
 
+**MUST — any `--text-*` name beyond the stock scale above breaks `cn()` unless you register it.**
+`text-*` is Tailwind's one overloaded namespace: it means font-size *and* text-color, and
+`tailwind-merge` — which every shadcn `cn()` calls — disambiguates only by matching a fixed name
+list (`xs` `sm` `base` `lg` `xl` `2xl`…`9xl`). It never looks at what your `@theme` key actually
+renders. So the moment you add a semantic size — `--text-hero`, `--text-label`, `--text-h1`,
+anything off that list — `tailwind-merge` cannot tell it from a color utility, and
+`cn('text-hero text-primary')` silently returns `'text-primary'`. No error, no warning; the size
+class never reaches the DOM. Measured on `tailwind-merge@3.6.0`, the version this skill's own
+`examples/app-ui` pins:
+
+```
+twMerge('text-6xl text-primary')  -> 'text-6xl text-primary'   // stock name: safe
+twMerge('text-hero text-primary') -> 'text-primary'            // custom name: size is gone
+twMerge('text-hero')              -> 'text-hero'               // no colour to collide with: safe
+```
+
+That third line is why this survives review: the token works everywhere until a colour class lands
+beside it. It cost a hero rendering at 16px instead of 112px while typecheck, build, three grep
+gates and the contrast solver were all green (the superdesign repo's field-run log (evals/field-runs/2026-08-23-dkuvpn.md) F1, F11).
+
+The fix ships in the same commit as the token, in `lib/utils.ts`:
+
+```ts
+import { clsx, type ClassValue } from "clsx"
+import { extendTailwindMerge } from "tailwind-merge"
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      // every --text-* suffix in @theme that is not xs/sm/base/lg/xl/2xl…9xl
+      text: ['hero', 'hero-sm', 'hero-md', 'h1', 'h2', 'h3', 'lead', 'label', 'data'],
+      // every --color-* suffix that could collide with a text-/bg-/border- prefix
+      color: ['rule', 'primary-hover', 'primary-quiet', 'positive', 'surface-container'],
+    },
+  },
+})
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+Both arrays are facts about the `@theme` block, not prose to maintain by hand. After any token
+change run the gate, which fails non-zero on drift:
+
+```bash
+node scripts/check-tw-merge-tokens.mjs <theme.css> <lib/utils.ts>
+```
+
 **Display leading is 1.083 / 1.133, never `1`.** `line-height: 1` clips descenders — the same bug the
 italic rule below guards against — and is tighter than any verifiable system: M3 `display-large` is
 57/64 = 1.123, Apple's Large Title 34/41 = 1.206. 48/52 and 60/68 also keep both rungs on the 4px grid.
@@ -1019,7 +1068,7 @@ entirely in forced-colors mode** while `outline` survives; and `contain: paint` 
 
 ## 11. App-UI product defaults (dense product surfaces)
 
-> **Grounded from `docs/research/notes/product-app-ui-patterns.md` (2026-07-05).** Scope: dense
+> **Grounded from the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) (2026-07-05).** Scope: dense
 > **product/app** surfaces (dashboards, tables, ⌘K palettes, settings, forms, states) — **not** marketing
 > pages. **Honesty caveat, carry it forward:** these hard numbers lean on **shadcn/ui + cmdk + Radix
 > source, Vercel Geist / design.md, and Emil Kowalski's motion writing** — open-source library defaults

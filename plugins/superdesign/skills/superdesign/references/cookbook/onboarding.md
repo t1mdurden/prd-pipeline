@@ -113,7 +113,7 @@ export function SetupChecklist({ steps, onDismiss }: { steps: Step[]; onDismiss?
 
 ## Corpus grounding — onboarding (2026-07-05 research)
 
-Grounded from `docs/research/notes/product-app-ui-patterns.md` → "## Onboarding flows". The recipe above
+Grounded from the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → "## Onboarding flows". The recipe above
 stands; this appendix adds copyable rules with specific values and preserves each source's confidence flag.
 Core stance of the corpus: teach by *requiring the real action*, define activation as *completing the value
 loop* (not creating an object), and surface shortcuts *passively* through the palette.

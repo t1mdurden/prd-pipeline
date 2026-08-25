@@ -6,10 +6,20 @@
 //   node scripts/extract-reference.mjs --url <url> --viewport 1440x900 --theme dark --json
 //   node scripts/extract-reference.mjs --url <url> --out ref/example    # writes .md + .json
 //   node scripts/extract-reference.mjs --diff ref/example.json ref/ours.json   # the clone gate
+//                                       ↑ also prints the system-maturity line: how many tokens
+//                                         each side NAMES, which the six mechanics cannot express
 //
 // Emits the SIX MECHANICS that `brand-to-system.md` § "Capturing a named product reference"
 // demands — type pairing and weights, palette with roles, radius, elevation recipe,
 // grid/measure, motion — plus the five design dials, measured rather than guessed.
+//
+// TWO PASSES, and they answer different questions. The SOURCE pass runs first, over plain HTTP,
+// before any browser exists: it fetches the document, resolves every stylesheet, and reads the
+// custom-property DECLARATIONS with their selector context — that is the only route to a token's
+// NAME and to the theme that was not on screen. The BROWSER pass then measures what the page
+// actually painted. Neither overwrites the other: `radius: 8px` and `--radius-lg: 8px` are the
+// same number and different facts, and a declared token no element uses is a third fact again.
+// Section 7 of the card is the parity check between them.
 //
 // Needs Playwright, which this repo does not vendor. It is borrowed — in order — from this
 // script's directory, the cwd, then `silver`'s own install. silver IS a local headless Playwright,
@@ -20,7 +30,13 @@
 // This measures PUBLIC RENDERED OUTPUT — the same computed styles any visitor's devtools show.
 // It does not defeat auth, and it does not copy: the output is an input to a *differentiation*
 // step (→ references/reference-mining.md § "The differentiation rule"), never a theme to ship.
-// Exit 0 = measured. 2 = bad usage. 3 = page never loaded. 4 = playwright missing.
+//
+// EXIT-CODE CONTRACT — identical in every superdesign gate (ARCHITECTURE.md §2):
+//   0        clean
+//   1–63     the number of violations. A count above 63 is clamped to 63 and the line says so.
+//   64–79    harness error — 64 usage · 65 missing dep · 66 navigation failed · 67 no target
+// A measurement run only ever exits 0 or a harness code; --diff is the mode with violations,
+// and there a violation is one of the six mechanics that did not move (plus the accent-hue tell).
 
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
@@ -41,7 +57,7 @@ const USAGE = `usage:
   node scripts/extract-reference.mjs --diff <reference.json> <ours.json>`
 
 if (diffPair !== -1) { await differentiationGate(argv[diffPair + 1], argv[diffPair + 2]); process.exit(0) }
-if (!url) { console.error(USAGE); process.exit(2) }
+if (!url) { console.error(USAGE); process.exit(64) } // 64 = usage
 
 /**
  * Find Playwright without asking anyone to install it. Three places, in order:
@@ -84,13 +100,13 @@ async function need(name) {
  * Exit code = the number of failures. This is the measurable half of § The differentiation rule.
  */
 async function differentiationGate(refPath, oursPath) {
-  if (!refPath || !oursPath) { console.error(USAGE); process.exit(2) }
+  if (!refPath || !oursPath) { console.error(USAGE); process.exit(64) } // 64 = usage
   let R, O
   try { R = JSON.parse(readFileSync(refPath, 'utf8')); O = JSON.parse(readFileSync(oursPath, 'utf8')) } catch (e) {
     console.error(`✗ ${e.message.split('\n')[0]}`)
     console.error('  Both arguments are the .json written by --out. Capture your own build first:')
     console.error('    node scripts/extract-reference.mjs --url <your dev-server url> --out ref/ours')
-    process.exit(2)
+    process.exit(67) // 67 = no target — the .json to compare against is missing or unparseable
   }
   const hue = (s) => { const m = /oklch\(([\d.]+) ([\d.]+) ([\d.]+)/.exec(s || ''); return m ? { L: +m[1], C: +m[2], H: +m[3] } : null }
   const fam = (r) => (r.type.stacks?.[0]?.[0] || '').split(',')[0].replace(/["']/g, '').trim().toLowerCase()
@@ -113,11 +129,36 @@ async function differentiationGate(refPath, oursPath) {
   console.log(`differentiation — ${R.title || refPath}  vs  ${O.title || oursPath}\n`)
   for (const [name, differs, detail] of axes) console.log(`  [${differs ? 'MOVED' : 'SAME '}] ${name.padEnd(15)} ${detail}`)
 
+
+  // SYSTEM MATURITY — not a seventh mechanic and deliberately not part of the exit code. The six
+  // axes above ask "did we move far enough from the reference"; this one asks "does our system
+  // have as much system in it". A build that matched all six and names 4 tokens against the
+  // reference's 47 has not been differentiated, it has been under-built, and the six axes cannot
+  // see the difference. Absent on any .json captured before the source pass existed.
+  const mat = (r) => (r.sourceTokens && r.sourceTokens.ok ? r.sourceTokens : null)
+  const RT = mat(R); const OT = mat(O)
+  const matLine = (t, r) => (t
+    ? `${String(t.names).padStart(4)} names · ${t.brandNames} after framework scales · ${t.themed} re-pointed for dark at the root (+${t.themedScoped || 0} scoped) · ${t.scopedOnly} component-scoped only`
+    : r.sourceTokens ? `   — no token layer reached (${r.sourceTokens.reason})` : '   — captured before the source pass existed; re-run --url to add it')
+  console.log('\n  system maturity (not scored — the six axes cannot express it)')
+  console.log(`    reference  ${matLine(RT, R)}`)
+  console.log(`    ours       ${matLine(OT, O)}`)
+  if (RT && OT) {
+    const d = RT.brandNames - OT.brandNames
+    console.log(d > 0
+      ? `    → the reference names ${d} more tokens than we do (${RT.brandNames} vs ${OT.brandNames}). Every value we did not name is a value nobody can re-theme.`
+      : d < 0 ? `    → we name ${-d} more tokens than the reference (${OT.brandNames} vs ${RT.brandNames}) — check they are used, not just declared.`
+        : `    → both name ${OT.brandNames} tokens.`)
+    if (RT.themed + (RT.themedScoped || 0) > 0 && OT.themed + (OT.themedScoped || 0) === 0) console.log('    → the reference re-points tokens for dark; we re-point none. Our build is single-theme.')
+  }
+
   let failures = 0
   if (moved < 3) { failures += 3 - moved; console.log(`\n✗ only ${moved} of 6 mechanics moved — 3 is the floor`) }
   if (dH < 10) { failures++; console.log(`✗ accent hue is within ${dH.toFixed(0)}° of the reference — that is the clone tell, move it`) }
   console.log(failures === 0 ? `\n✓ differentiated: ${moved}/6 mechanics moved, accent Δ${dH.toFixed(0)}°` : '')
-  process.exit(failures)
+  // Contract: 1–63 is the violation count. This one maxes out at 4, but clamp for uniformity.
+  if (failures > 63) console.log(`  (exit code clamped to 63; ${failures} failure(s) found)`)
+  process.exit(Math.min(failures, 63))
 }
 
 let chromium
@@ -130,7 +171,7 @@ try {
   console.error('  npm i -g agent-silver          # preferred — silver ships one, and drives pages too')
   console.error('  npm i -D playwright && npx playwright install chromium   # or just the engine')
   console.error(`  (tried this script's dir, ${process.cwd()}, and silver: ${e.message.split('\n')[0]})`)
-  process.exit(4)
+  process.exit(65) // 65 = missing dep
 }
 
 /* ── colour: whatever the browser serialised → OKLCH ─────────────────────────────────────── */
@@ -215,6 +256,356 @@ function parseColor(str) {
 
 const fmt = (c) => `oklch(${c.L.toFixed(3)} ${c.C.toFixed(3)} ${c.H.toFixed(1)})${c.a < 1 ? ` / ${c.a.toFixed(2)}` : ''}`
 const key = (c) => `${c.L.toFixed(2)}|${c.C.toFixed(2)}|${(c.C < 0.02 ? 0 : Math.round(c.H / 4) * 4)}|${c.a.toFixed(2)}`
+
+
+/* ── the SOURCE pass: named tokens, read from the stylesheets before the browser starts ───── */
+
+// `getComputedStyle` answers "what did this element end up as". It cannot answer "what is this
+// value called", and it only ever sees the one theme and the one set of states that happened to be
+// on screen. The source pass answers both: fetch the document, resolve every stylesheet it links,
+// and read the custom-property DECLARATIONS *with their selector context*. `--radius: 8px` under
+// `:root` and the same name re-pointed under `.dark` are two facts the rendered page shows as one
+// number, and a token no element on this page uses is invisible to the browser pass entirely.
+//
+// Strictly ADDITIVE. Nothing here overwrites a measured value: a declared token with no rendered
+// use and a measured value with no name are different findings, and the card prints both.
+// Adapted from researchfms `framer/tools/extract_tokens.py`, which recovered 864 light+dark
+// `--framer-fresco-*` tokens from Framer's editor CSS by exactly this route.
+
+const SRC = { sheets: 40, bytesPerSheet: 3_000_000, bytesTotal: 12_000_000, perFetchMs: 12_000, totalMs: 30_000 }
+const SRC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+
+// A selector that IS the document root, once theme markers are stripped off it. `:root`, `html`,
+// `body`, `:host`, `:where(:root)` and `:root.dark` all declare a token for the whole page; a
+// `.btn` does not. Getting this wrong is the difference between a design system and a component.
+const ROOTISH = /^(?::root|html|body|\*|:host(?:\([^)]*\))?|::?backdrop)(?::{1,2}[a-z-]+(?:\([^)]*\))?)*$/i
+// Theme markers, in three tiers of authority. The tiers exist because of one real site: GitHub
+// ships `[data-color-mode=dark][data-dark-theme=light]` — "the OS is dark and the user chose the
+// LIGHT palette for it". Reading the mode attribute there files every light value under `dark` and
+// inverts the whole census. An attribute whose NAME contains `theme` is the theme; `color-mode`,
+// `mode` and `scheme` are only the switch, and a class marker is the last resort.
+const THEME_ATTR = /\[data-[\w-]*theme[\w-]*[~^|$*]?=\s*["']?(dark|light)/gi
+const MODE_ATTR = /\[data-[\w-]*(?:color-?mode|mode|scheme|bs-theme)[\w-]*[~^|$*]?=\s*["']?(dark|light)/gi
+const CLASS_MARK = /[.#](?:theme-|mode-)?(dark|light)(?:-mode|-theme)?(?![\w-])/gi
+
+/** One compound selector → 'dark' | 'light' | null. `null` also means "the markers disagree". */
+function themeOfSelector(sel) {
+  for (const re of [THEME_ATTR, MODE_ATTR, CLASS_MARK]) {
+    const hits = [...sel.matchAll(re)].map((m) => m[1].toLowerCase())
+    if (!hits.length) continue
+    return hits.every((h) => h === hits[0]) ? hits[0] : null
+  }
+  return null
+}
+
+/** A whole selector list plus its at-rule context → the theme it declares for, or null. */
+function classifyTheme(selText, atText) {
+  // The SELECTOR outranks the media query, and that order is not cosmetic. GitHub's light bundle
+  // contains `@media (prefers-color-scheme:dark){[data-color-mode=auto][data-dark-theme=light]{…}}`
+  // — the LIGHT palette, served to a dark OS because the user asked for it. Reading the media
+  // query first files all 700 of those under `dark` and the census reports light == dark.
+  const themes = selText.split(',').map((x) => x.trim()).filter(Boolean).map(themeOfSelector).filter(Boolean)
+  if (themes.length) return themes.every((t) => t === themes[0]) ? themes[0] : null
+  if (/prefers-color-scheme\s*:\s*dark/i.test(atText)) return 'dark'
+  if (/prefers-color-scheme\s*:\s*light/i.test(atText)) return 'light'
+  return null
+}
+// Only the two things that are genuinely somebody else's defaults: Tailwind's internal `--tw-*`
+// plumbing and a wholesale colour-scale dump. A `--radius-md` is NOT filtered even though Tailwind
+// v4 ships one — if a site kept it, it is that site's radius scale.
+const FRAMEWORK_SCALE = /^--tw-|^--(?:colors?)-(?:slate|gray|grey|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}$|^--(?:colors?)-(?:transparent|current|black|white|inherit)$/i
+
+const TOKEN_CATEGORY = [
+  [/(?:^|-)(?:radius|rounded|corner)(?:$|-)/i, 'radius'],
+  [/(?:^|-)(?:shadow|elevation|depth)(?:$|-)/i, 'shadow'],
+  [/(?:^|-)(?:duration|dur|ease|easing|timing|transition|motion|animate|animation|spring)(?:$|-)/i, 'motion'],
+  [/(?:^|-)(?:font|text|type|leading|tracking|weight|letter|line-height)(?:$|-)/i, 'type'],
+  [/(?:^|-)(?:space|spacing|gap|gutter|pad|padding|margin|inset|size|width|height)(?:$|-)/i, 'space'],
+  [/(?:^|-)(?:colou?r|bg|background|fg|foreground|surface|border|ring|outline|accent|brand|primary|secondary|tertiary|muted|subtle|destructive|danger|success|warning|error|info|chart|sidebar|card|popover|overlay|input|link|on)(?:$|-)/i, 'color'],
+  [/(?:^|-)(?:z|layer|opacity|alpha|blur|breakpoint|screen|container|aspect|grid|column)(?:$|-)/i, 'layout'],
+]
+
+/** Split a selector list and ask whether EVERY part declares at document-root level. */
+function rootLevel(sel) {
+  const parts = sel.split(',').map((s) => s.trim()).filter(Boolean)
+  if (!parts.length) return false
+  return parts.every((p) => {
+    let s = p.replace(/^&\s*/, '').trim()
+    for (let i = 0; i < 3; i++) s = s.replace(/^:(?:where|is)\(([^()]*)\)$/i, '$1').trim()
+    // strip the theme marker itself — `:root.dark` still declares for the whole document
+    s = s.replace(/[.#](?:dark|light|theme-dark|theme-light|dark-mode|light-mode|dark-theme|light-theme)\b/gi, '')
+      .replace(/\[[^\]]*\]/g, '').trim()
+    return s === '' || ROOTISH.test(s)
+  })
+}
+
+/**
+ * Walk CSS text and hand every custom-property declaration to `emit(name, value, stack)`, where
+ * `stack` is the live nest of selectors and at-rules above it. Quote- and paren-aware, because a
+ * `;` inside `url(data:image/svg+xml;…)` and a `}` inside `content: "}"` both otherwise end a rule
+ * that has not ended. Minified CSS drops the final `;`, so `}` flushes a pending declaration too.
+ */
+function scanDeclarations(css, emit) {
+  css = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  const stack = []
+  let start = 0; let paren = 0; let quote = ''
+  const flush = (end) => {
+    const decl = css.slice(start, end)
+    const k = decl.indexOf(':')
+    if (k > 0) {
+      const name = decl.slice(0, k).trim()
+      if (/^--[\w-]+$/.test(name)) emit(name, decl.slice(k + 1).trim(), stack)
+    }
+  }
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i]
+    if (quote) { if (c === '\\') i++; else if (c === quote) quote = ''; continue }
+    // A CSS escape outside a string, which is not exotic: Tailwind v4 emits arbitrary variants as
+    // literal class identifiers — `.\[\&_svg\:not\(\[class\*\=\'size-\'\]\)\]\:size-3`.
+    // Without this line the `\'` opens a string that never closes, the scanner desyncs 80 kB into
+    // the file, and every token after that point vanishes: app-ui reported 0 of its 36 `:root`
+    // tokens and 0 of its 24 `.dark` re-points, with no error anywhere.
+    if (c === '\\') { i++; continue }
+    if (c === '"' || c === "'") { quote = c; continue }
+    if (c === '(') { paren++; continue }
+    if (c === ')') { if (paren) paren--; continue }
+    if (paren) continue
+    if (c === '{') { stack.push(css.slice(start, i).replace(/\s+/g, ' ').trim()); start = i + 1; continue }
+    if (c === '}') { flush(i); stack.pop(); start = i + 1; continue }
+    if (c === ';') { flush(i); start = i + 1 }
+  }
+}
+
+/**
+ * The census. One entry per NAME, carrying its base value, its light and dark re-points, and how
+ * many component scopes redeclare it. First write wins inside each slot — a stylesheet's own order
+ * is its specificity story, and a later `.dark` block must not overwrite the `:root` base.
+ */
+function buildCensus(chunks) {
+  const tokens = new Map()
+  let declarations = 0
+  for (const css of chunks) {
+    scanDeclarations(css, (name, value, stack) => {
+      declarations++
+      const at = stack.filter((s) => s.startsWith('@'))
+      const sels = stack.filter((s) => !s.startsWith('@'))
+      const atText = at.join(' ')
+      const selText = sels.join(' ')
+      const theme = classifyTheme(selText, atText)
+      // `@theme` / `@theme inline` is Tailwind v4's token block and has no selector at all.
+      const atRoot = sels.length === 0 ? /@(?:theme|property)\b/.test(atText) : sels.every(rootLevel)
+      let t = tokens.get(name)
+      if (!t) { t = { base: null, light: null, dark: null, scopes: new Map(), darkScoped: false, n: 0 }; tokens.set(name, t) }
+      t.n++
+      // A dark re-point that is NOT at the root is still theming — Tailwind v4 sites do almost all
+      // of it this way (`:is(:where(.prose):is(.dark,.dark *))`). Counting it as untheme would
+      // report "single-theme" about a site with 811 dark rules.
+      if (theme === 'dark' && !atRoot) t.darkScoped = true
+      if (atRoot && theme === null) { if (t.base === null) t.base = value }
+      else if (atRoot && theme === 'dark') { if (t.dark === null) t.dark = value }
+      else if (atRoot && theme === 'light') { if (t.light === null) t.light = value }
+      else if (!t.scopes.has(selText || atText)) t.scopes.set(selText || atText, value)
+    })
+  }
+  return { tokens, declarations }
+}
+
+function tokenCategory(name, value) {
+  for (const [re, cat] of TOKEN_CATEGORY) if (re.test(name)) return cat
+  return parseDeclaredColor(value) ? 'color' : 'other'
+}
+
+const CSS_NAMED = { white: '#ffffff', black: '#000000', red: '#ff0000', blue: '#0000ff', green: '#008000', gray: '#808080', grey: '#808080' }
+
+/**
+ * A DECLARED value → OKLCH. `parseColor` reads what a browser serialises (always rgb/oklch/lab);
+ * a stylesheet is written by a human and ships hex, `hsl()`, or shadcn's bare `222 47% 11%` triplet
+ * that only becomes a colour inside `hsl(var(--x))`. Without those three the parity check finds
+ * nothing on precisely the sites that have the best token layers.
+ */
+function parseDeclaredColor(raw) {
+  if (!raw) return null
+  let v = String(raw).trim().replace(/\s*!important$/i, '').replace(/;$/, '')
+  if (/var\(|calc\(|currentcolor|inherit|initial|unset|none|transparent/i.test(v) && !/^#|^rgb|^hsl|^oklch|^oklab|^lab|^color\(/i.test(v)) return null
+  if (CSS_NAMED[v.toLowerCase()]) v = CSS_NAMED[v.toLowerCase()]
+  let m = /^#([0-9a-f]{3,8})$/i.exec(v)
+  if (m) {
+    let h = m[1]
+    if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join('')
+    if (h.length !== 6 && h.length !== 8) return null
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+    const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1
+    if (a === 0) return null
+    const [L, C, H] = linearToOklch(lin(r), lin(g), lin(b))
+    return { L, C, H, a }
+  }
+  m = /^hsla?\(\s*([\d.-]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:[,/\s]+([\d.%]+))?/i.exec(v)
+  if (!m) m = /^([\d.-]+)(?:deg)?\s+([\d.]+)%\s+([\d.]+)%$/.exec(v) // shadcn's bare hsl triplet
+  if (m) {
+    const a = m[4] === undefined ? 1 : m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4])
+    if (a === 0) return null
+    const [h, s, l] = [((+m[1] % 360) + 360) % 360, +m[2] / 100, +m[3] / 100]
+    const f = (n) => { const k = (n + h / 30) % 12; const x = s * Math.min(l, 1 - l); return l - x * Math.max(-1, Math.min(k - 3, 9 - k, 1)) }
+    const [L, C, H] = linearToOklch(lin(f(0)), lin(f(8)), lin(f(4)))
+    return { L, C, H, a }
+  }
+  return parseColor(v)
+}
+
+/** A declared length → px, so a declared radius can be compared with a measured one. */
+function parseDeclaredPx(raw) {
+  const m = /^(-?[\d.]+)(px|rem|em)?$/.exec(String(raw || '').trim())
+  if (!m) return null
+  const n = parseFloat(m[1])
+  return m[2] === 'rem' || m[2] === 'em' ? n * 16 : m[2] === 'px' || n === 0 ? n : null
+}
+
+/**
+ * Fetch the document and every stylesheet it names, before Playwright exists. Never throws and
+ * never blocks the browser pass: a 403, a CDN that hates a bare fetch, or a site that injects its
+ * CSS from JS all return `ok:false` with a reason, and the run continues to measurement.
+ */
+async function sourcePass(pageUrl) {
+  const t0 = Date.now()
+  const notes = []
+  const get = async (u, kind) => {
+    if (Date.now() - t0 > SRC.totalMs) { notes.push('budget exhausted'); return null }
+    try {
+      const res = await fetch(u, {
+        redirect: 'follow',
+        signal: AbortSignal.timeout(SRC.perFetchMs),
+        headers: { 'user-agent': SRC_UA, accept: kind === 'css' ? 'text/css,*/*;q=0.1' : 'text/html,application/xhtml+xml' },
+      })
+      if (!res.ok) { notes.push(`HTTP ${res.status} — ${u.slice(0, 110)}`); return null }
+      const text = await res.text()
+      return text.length > SRC.bytesPerSheet ? text.slice(0, SRC.bytesPerSheet) : text
+    } catch (e) { notes.push(`${String(e.message || e).split('\n')[0]} — ${u.slice(0, 110)}`); return null }
+  }
+
+  const html = await get(pageUrl, 'html')
+  if (html == null) return { ok: false, reason: 'the document did not fetch', notes, stylesheets: [], inlineBlocks: 0, bytes: 0 }
+
+  const baseTag = /<base\b[^>]*\bhref\s*=\s*["']?([^"'\s>]+)/i.exec(html)
+  const baseUrl = (() => { try { return baseTag ? new URL(baseTag[1], pageUrl).href : pageUrl } catch { return pageUrl } })()
+  const abs = (href) => { try { return new URL(href.replace(/&amp;/g, '&').trim(), baseUrl).href } catch { return null } }
+
+  const chunks = []
+  let inlineBlocks = 0
+  for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    if (!m[1].includes('--')) continue
+    chunks.push(m[1]); inlineBlocks++
+  }
+
+  const hrefs = []
+  for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = m[0]
+    const rel = (/\brel\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag) || []).slice(1).find(Boolean) || ''
+    const as = (/\bas\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag) || []).slice(1).find(Boolean) || ''
+    if (!/stylesheet/i.test(rel) && !(/preload/i.test(rel) && /^style$/i.test(as))) continue
+    const href = (/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag) || []).slice(1).find(Boolean)
+    const u = href && abs(href)
+    if (u && /^https?:/.test(u) && !hrefs.includes(u)) hrefs.push(u)
+  }
+
+  const stylesheets = []
+  let bytes = chunks.reduce((n, c) => n + c.length, 0)
+  const seen = new Set(hrefs)
+  for (let i = 0; i < hrefs.length && stylesheets.length < SRC.sheets && bytes < SRC.bytesTotal; i++) {
+    const css = await get(hrefs[i], 'css')
+    if (css == null) continue
+    chunks.push(css); bytes += css.length
+    stylesheets.push({ url: hrefs[i], bytes: css.length })
+    // one level of @import, which is how a token layer is usually split out of the app bundle
+    if (i < SRC.sheets / 2) {
+      for (const im of css.matchAll(/@import\s+(?:url\(\s*)?["']?([^"')\s;]+)/g)) {
+        const u = (() => { try { return new URL(im[1], hrefs[i]).href } catch { return null } })()
+        if (u && /^https?:/.test(u) && !seen.has(u)) { seen.add(u); hrefs.push(u) }
+      }
+    }
+  }
+
+  const { tokens, declarations } = buildCensus(chunks)
+  return {
+    ok: tokens.size > 0,
+    reason: tokens.size > 0 ? null : 'no custom-property declaration in any stylesheet this pass could reach',
+    via: 'source fetch (before the browser)',
+    stylesheets, inlineBlocks, bytes, declarations, tokens, notes,
+  }
+}
+
+/**
+ * Turn the raw census into the report field, and run the PARITY CHECK — the point of the whole
+ * pass. For each value the browser measured, is there a declared name for it? A hit turns
+ * "oklch(0.55 0.22 264) on 0.4% of painted area" into `--primary`. A miss is equally a finding:
+ * a declared colour that appears nowhere in the measured census is a token for a theme or a state
+ * this run never rendered. Measured values are never overwritten — only annotated.
+ */
+function summarizeCensus(src, measured) {
+  const base = { ok: false, reason: src?.reason || 'source pass did not run', via: src?.via || null,
+    stylesheets: (src?.stylesheets || []).length, inlineBlocks: src?.inlineBlocks || 0, bytes: src?.bytes || 0,
+    names: 0, brandNames: 0, declarations: src?.declarations || 0, themed: 0, themedScoped: 0, scopedOnly: 0,
+    namedBackgrounds: 0, topBackgrounds: (measured?.topBackgrounds || []).length, radiusNames: [], radiusBaseNamed: null, declaredUnseenTotal: 0,
+    byCategory: {}, tokens: {}, namesFor: {}, declaredUnseen: [], notes: (src?.notes || []).slice(0, 8) }
+  if (!src || !src.tokens || src.tokens.size === 0) return base
+
+  const entries = [...src.tokens.entries()]
+  const value = (t) => t.base ?? t.light ?? t.dark ?? [...t.scopes.values()][0] ?? null
+  const byCategory = {}
+  const tokensOut = {}
+  let themed = 0; let themedScoped = 0; let scopedOnly = 0; let brandNames = 0
+  for (const [name, t] of entries) {
+    const v = value(t)
+    const cat = tokenCategory(name, v)
+    byCategory[cat] = (byCategory[cat] || 0) + 1
+    if (t.dark !== null || (t.light !== null && t.light !== t.base)) themed++
+    else if (t.darkScoped) themedScoped++
+    if (t.base === null && t.light === null && t.dark === null) scopedOnly++
+    if (!FRAMEWORK_SCALE.test(name)) brandNames++
+    if (Object.keys(tokensOut).length < 400) {
+      tokensOut[name] = { category: cat, base: t.base, light: t.light, dark: t.dark, scopes: t.scopes.size, declarations: t.n }
+    }
+  }
+
+  // parity: declared colour → the OKLCH bucket the browser painted
+  const declaredByKey = new Map()
+  for (const [name, t] of entries) {
+    for (const v of [t.base, t.light, t.dark]) {
+      const c = v && parseDeclaredColor(v)
+      if (!c) continue
+      const k = key(c)
+      if (!declaredByKey.has(k)) declaredByKey.set(k, [])
+      if (!declaredByKey.get(k).includes(name)) declaredByKey.get(k).push(name)
+    }
+  }
+  const namesFor = {}
+  for (const [role, colour] of Object.entries(measured.colours)) {
+    if (!colour) continue
+    const hit = declaredByKey.get(key(colour.c))
+    if (hit) namesFor[role] = hit.slice(0, 3)
+  }
+  // Count against `declaredByKey`, never against the capped `tokens` map — a 2,297-token layer
+  // truncates at 400 and the answer silently becomes zero.
+  const namedBackgrounds = (measured.topBackgrounds || []).filter((x) => declaredByKey.has(key(x.c))).length
+  const measuredKeys = new Set(measured.allColours.map((x) => key(x.c)))
+  const declaredUnseen = []
+  for (const [name, t] of entries) {
+    if (FRAMEWORK_SCALE.test(name)) continue
+    const c = parseDeclaredColor(value(t))
+    if (c && !measuredKeys.has(key(c))) declaredUnseen.push(name)
+  }
+  // radius: a declared step the page never rendered is the same kind of finding, in geometry
+  const radiusNames = entries.filter(([n, t]) => tokenCategory(n, value(t)) === 'radius')
+    .map(([n, t]) => ({ name: n, px: parseDeclaredPx(value(t)) })).filter((x) => x.px !== null)
+  const radiusHit = radiusNames.find((x) => x.px === measured.radiusBase)
+
+  return { ...base, ok: true, reason: null,
+    names: entries.length, brandNames, declarations: src.declarations, themed, themedScoped, scopedOnly,
+    byCategory, tokens: tokensOut, namesFor,
+    namedBackgrounds, topBackgrounds: (measured.topBackgrounds || []).length,
+    radiusNames: radiusNames.slice(0, 12), radiusBaseNamed: radiusHit ? radiusHit.name : null,
+    declaredColours: declaredByKey.size,
+    declaredUnseen: declaredUnseen.slice(0, 40), declaredUnseenTotal: declaredUnseen.length }
+}
 
 /* ── the in-page pass. Geometry and computed style only — nothing here is an opinion. ─────── */
 
@@ -405,6 +796,11 @@ async function dismissConsent(page) {
 
 /* ── drive the page ───────────────────────────────────────────────────────────────────────── */
 
+// SOURCE PASS FIRST — no browser yet. It costs one HTTP round trip per stylesheet and it is the
+// only pass that can return a token's NAME. It must never be able to stop the measurement, so it
+// is fully self-contained: any failure comes back as `ok:false` and the browser pass proceeds.
+const src = await sourcePass(url).catch((e) => ({ ok: false, reason: String(e.message || e).split('\n')[0], notes: [], stylesheets: [], inlineBlocks: 0, bytes: 0 }))
+
 const browser = await chromium.launch()
 // `reducedMotion` MUST be explicit. Left to the host, a machine that prefers reduced motion makes
 // every duration collapse — dembrandt reports `0.001s ×950` for a page whose real transitions are
@@ -424,17 +820,57 @@ page.on('response', async (res) => {
 // keep a real marketing site permanently busy. Degrade to `load` + a settle window rather than
 // reporting nothing, and say which one produced the numbers.
 let waited = 'networkidle'
+let navResponse = null
 try {
-  await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
+  navResponse = await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
 } catch {
   waited = 'load + 3s settle'
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
+    navResponse = await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
     await page.waitForTimeout(3000)
   } catch (e) {
     console.error(`✗ ${url} never loaded: ${e.message.split('\n')[0]}`)
-    await browser.close(); process.exit(3)
+    await browser.close(); process.exit(66) // 66 = navigation failed
   }
+}
+
+// A page that is not there still renders. `ui.shadcn.com/docs/components/pricing-table` returns
+// 404 and Playwright reports it loaded; the extractor happily measured the error page and recon
+// wrote `measured: true` beside it, so Phase 1 would have designed against the digest of a 404.
+// Two independent guards, because either alone misses a real case:
+//   · the HTTP status — catches a hard 404/410/500 that still paints something;
+//   · an unstyled document — catches a soft 404, a bot wall, or an SSR shell that never hydrated.
+//     A page whose body font is a browser default AND which loaded no @font-face and almost no CSS
+//     is not a design; it is the absence of one. `auteur-scripts.md` §1 is where this guard comes
+//     from — the one thing worth taking out of refscout.
+const httpStatus = navResponse ? navResponse.status() : null
+const thin = await page.evaluate(() => {
+  const body = getComputedStyle(document.body).fontFamily || ''
+  const stylesheetBytes = [...document.styleSheets].reduce((n, s) => {
+    try { return n + [...s.cssRules].length } catch { return n }   // cross-origin: unreadable, still counted below
+  }, 0)
+  return {
+    bodyFont: body,
+    defaultFont: /^"?(Times New Roman|Times|serif)"?$/i.test(body.split(',')[0].trim()),
+    fontFaces: [...document.fonts].length,
+    cssRules: stylesheetBytes,
+    crossOriginSheets: [...document.styleSheets].filter((s) => { try { void s.cssRules; return false } catch { return true } }).length,
+    textChars: (document.body.innerText || '').trim().length,
+    title: document.title || '',
+  }
+})
+const unstyled = thin.defaultFont && thin.fontFaces === 0 && thin.cssRules < 20 && thin.crossOriginSheets === 0
+const looksLikeError = /^(4\d\d|5\d\d)$/.test(String(httpStatus)) || /\b(404|not found|page not found)\b/i.test(thin.title)
+if (looksLikeError || unstyled) {
+  console.error(`✗ ${url} is not a page worth measuring — ${
+    looksLikeError ? `HTTP ${httpStatus}${thin.title ? ` · title "${thin.title}"` : ''}` : ''
+  }${looksLikeError && unstyled ? ' and ' : ''}${
+    unstyled ? `unstyled (body font ${thin.bodyFont.split(',')[0]}, ${thin.fontFaces} webfonts, ${thin.cssRules} CSS rules)` : ''
+  }.`)
+  console.error('  Measuring it would report the browser\'s defaults as this product\'s design system.')
+  console.error('  Pass --allow-thin to measure it anyway (a deliberately minimal site is a real case).')
+  if (!argv.includes('--allow-thin')) { await browser.close(); process.exit(66) } // 66 = navigation failed
+  console.error('  --allow-thin given: measuring anyway.')
 }
 // A cookie wall is a full-viewport surface with its own palette and its own type. Leave it up and
 // the report describes the consent vendor's design, not the site's. Sweep every frame — CMPs are
@@ -494,6 +930,9 @@ const faceSrc = [...allCss.matchAll(/@font-face\s*{[^}]*?font-family\s*:\s*['"]?
 
 /* ── derive: the six mechanics + the five dials ───────────────────────────────────────────── */
 
+const srcUsedNames = src?.ok && src.tokens ? new Set(src.tokens.keys()) : null
+const runtimeOnly = [...customProps.keys()].filter((n) => !FRAMEWORK_DUMP.test(n) && !(srcUsedNames && srcUsedNames.has(n)))
+
 const colours = (rows) => rows.map(([str, w]) => ({ raw: str, w, c: parseColor(str) })).filter((x) => x.c)
 const dedupe = (rows) => {
   const seen = new Map()
@@ -543,6 +982,23 @@ const measureMed = m.measures.length ? m.measures.sort((a, b) => a - b)[Math.flo
 const bodyRow = m.ramp.find((r) => +r.k.split('/')[0] >= 13 && +r.k.split('/')[0] <= 20) || m.ramp[0]
 const bodySize = bodyRow ? +bodyRow.k.split('/')[0] : null
 
+// THE SOURCE-PASS MERGE. Declared names on one side, measured values on the other, and the two
+// are never allowed to overwrite each other — that separation IS the finding. If a plain fetch
+// could not reach the stylesheets (Cloudflare, a JS-injected <link>, an origin that 403s a bare
+// UA), fall back to the CSS the browser itself downloaded: same parser, weaker claim, and the card
+// says which one produced the numbers.
+let srcUsed = src
+if (!src?.ok) {
+  const fb = buildCensus([allCss])
+  if (fb.tokens.size) srcUsed = { ...src, ok: true, via: `browser-observed CSS (the source fetch reached nothing: ${src?.reason || 'no run'})`, tokens: fb.tokens, declarations: fb.declarations, bytes: allCss.length }
+}
+const sourceTokens = summarizeCensus(srcUsed, {
+  colours: { surface, accent, brandSurface },
+  allColours: [...bgc, ...fgc, ...bdc],
+  topBackgrounds: bgc.slice(0, 8),
+  radiusBase: radiusMode,
+})
+
 const texScore = m.tex.svgNoise + m.tex.image ? 2 : m.tex.gradient + m.tex.backdropBlur + m.tex.blend + m.tex.filter > 6 ? 1 : 0
 const dials = {
   TEXTURE_LEVEL: texScore,
@@ -553,6 +1009,40 @@ const dials = {
 }
 
 /* ── report ───────────────────────────────────────────────────────────────────────────────── */
+
+const censusRow = (n, t) => `| \`${n}\` | \`${(t.base ?? t.light ?? '—')}\` | \`${t.dark ?? '—'}\` |`
+const themedRows = Object.entries(sourceTokens.tokens).filter(([, t]) => t.dark !== null).slice(0, 14)
+const roleName = (role) => (sourceTokens.namesFor[role] || []).map((n) => '`' + n + '`').join(' ')
+const censusMd = !sourceTokens.ok
+  ? `_No custom-property declaration reached this pass — ${sourceTokens.reason}._
+_That is a finding, not a failure: this page has no reachable token layer, so every value in sections 1-6 above is unnamed by construction and a redesign of it cannot preserve names it does not have._
+${sourceTokens.notes.length ? '\nWhat the fetch hit:\n' + sourceTokens.notes.map((x) => `- \`${x}\``).join('\n') : ''}`
+  : `Read **before the browser launched**, from ${sourceTokens.stylesheets} stylesheet${sourceTokens.stylesheets === 1 ? '' : 's'} + ${sourceTokens.inlineBlocks} inline \`<style>\` block${sourceTokens.inlineBlocks === 1 ? '' : 's'} (${(sourceTokens.bytes / 1024).toFixed(0)} kB) · via ${sourceTokens.via}
+
+**${sourceTokens.names} names** declared in ${sourceTokens.declarations} declarations · **${sourceTokens.brandNames}** after dropping framework colour scales · **${sourceTokens.themed}** re-pointed for dark at the root${sourceTokens.themedScoped ? ` · **${sourceTokens.themedScoped}** re-pointed for dark inside a component scope only` : ''} · ${sourceTokens.scopedOnly} declared only inside a component scope, never at the root
+By category: ${Object.entries(sourceTokens.byCategory).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ') || '—'}
+${sourceTokens.radiusNames.length ? `Declared radius steps: ${sourceTokens.radiusNames.map((r) => `\`${r.name}\`=${r.px}px`).join(' · ')}` : ''}
+
+${themedRows.length ? `The light/dark pairs the rendered page shows as one number — the browser pass can never see both:
+
+| token | base / light | dark |
+|---|---|---|
+${themedRows.map(([n, t]) => censusRow(n, t)).join('\n')}
+${sourceTokens.themed > themedRows.length ? `\n…and ${sourceTokens.themed - themedRows.length} more re-pointed names (full map in the \`.json\`).` : ''}` : sourceTokens.themedScoped ? `No token is re-pointed for dark **at the root**, but ${sourceTokens.themedScoped} are re-pointed inside component scopes — this system themes per-component, not from one root switch.` : '_No token is re-pointed for dark anywhere: this token layer is single-theme, or the theme switch is done in JS._'}
+
+### Parity — declared names against measured values
+
+Neither side overrides the other. A measured value with a name is a recovered token; a measured
+value without one is a hard-coded effect; a declared name with no measured value is a theme or a
+state this run never rendered. All three are different facts about the same system.
+
+- surface ${surface ? fmt(surface.c) : '—'} → ${roleName('surface') || '**no declared name** — hard-coded, or built at runtime'}
+- accent ${accent ? fmt(accent.c) : '—'} → ${roleName('accent') || '**no declared name** — hard-coded, or built at runtime'}
+- brand surface ${brandSurface ? fmt(brandSurface.c) : '—'} → ${roleName('brandSurface') || '—'}
+- radius base ${radiusMode ? radiusMode + 'px' : 'square'} → ${sourceTokens.radiusBaseNamed ? '`' + sourceTokens.radiusBaseNamed + '`' : '**no declared name**'}
+- **${sourceTokens.namedBackgrounds} of the ${sourceTokens.topBackgrounds} most-painted backgrounds carry a declared name**; ${sourceTokens.topBackgrounds - sourceTokens.namedBackgrounds} are values with no name anywhere in the CSS
+- **${sourceTokens.declaredUnseenTotal} declared colour token${sourceTokens.declaredUnseenTotal === 1 ? '' : 's'} never appeared in the measured census**${sourceTokens.declaredUnseen.length ? ` — ${sourceTokens.declaredUnseen.slice(0, 10).map((n) => '`' + n + '`').join(' · ')}${sourceTokens.declaredUnseenTotal > 10 ? ` … +${sourceTokens.declaredUnseenTotal - 10}` : ''}` : ''}
+`
 
 const table = (rows) => rows.map((r) => `| ${r.join(' | ')} |`).join('\n')
 const pct = (w, tot) => `${((w / Math.max(1, tot)) * 100).toFixed(1)}%`
@@ -619,12 +1109,20 @@ Curves: ${m.ease.map(([e, n]) => `\`${e}\`×${n}`).join(' · ') || '—'}
 Animated properties: ${m.prop.map(([p, n]) => `${p}×${n}`).join(' · ') || '—'}
 Keyframe animations running: ${m.animated}
 
+## 7. Named token census — the source pass
+
+${censusMd}
+
 ## Dials, measured
 
 ${Object.entries(dials).map(([k, v]) => `- **${k}** — ${v}`).join('\n')}
 Texture counts: ${Object.entries(m.tex).map(([k, v]) => `${k} ${v}`).join(' · ')}
 
-## Authored token layer (${designProps.length} design-relevant custom properties of ${customProps.size} total${dumped ? `; ${dumped} framework-default palette entries dropped` : ''})
+## Authored token layer, as the browser saw it (${designProps.length} design-relevant custom properties of ${customProps.size} total${dumped ? `; ${dumped} framework-default palette entries dropped` : ''})
+
+This is the values-only view kept for continuity with the JSON: names the *browser run* pulled, in
+first-seen order, with no selector context. Section 7 is the same territory read properly.
+${sourceTokens.ok ? `Names here that section 7's source pass did not see (injected at runtime, or in CSS only this page load requested): **${runtimeOnly.length}**${runtimeOnly.length ? ` — ${runtimeOnly.slice(0, 12).map((n) => '`' + n + '`').join(' · ')}${runtimeOnly.length > 12 ? ` … +${runtimeOnly.length - 12}` : ''}` : ''}` : ''}
 
 ${designProps.length
   ? '```css\n' + designProps.slice(0, 60).map(([n, v]) => `${n}: ${v};`).join('\n') + '\n```'
@@ -638,7 +1136,8 @@ const report = { url, viewport: `${vw}x${vh}`, theme, title: m.title, isDark,
   radius: { histogram: m.radius, base: radiusMode, pillCorners: pillCount },
   shadow: m.shadow, spacing: { unit, gridShare, histogram: m.space, containers: m.widths, centred: m.centred },
   motion: { durations: m.dur, easings: m.ease, properties: m.prop, keyframes: m.animated, medianUiMs: durUiMedian, medianAllMs: durMedian },
-  texture: m.tex, dials, customProperties: Object.fromEntries(designProps.slice(0, 200)), nodeCount: m.nodeCount }
+  texture: m.tex, dials, customProperties: Object.fromEntries(designProps.slice(0, 200)),
+  sourceTokens, runtimeOnlyProperties: runtimeOnly.slice(0, 60), nodeCount: m.nodeCount }
 
 if (out) {
   mkdirSync(dirname(`${out}.md`), { recursive: true })

@@ -867,7 +867,7 @@ export default function SettingsPage() {
 ## Corpus grounding — settings (2026-07-05 research)
 
 Grounds the recipe above with copyable rules + concrete values from the app-UI research
-corpus. Source note: `docs/research/notes/product-app-ui-patterns.md` → **"## Settings
+corpus. Source note: the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → **"## Settings
 pages."** This is additive; it doesn't replace the recipe. Honesty flags from the corpus
 are preserved verbatim — do **not** launder reconstructed/directional numbers as verified
 product specs.

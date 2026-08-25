@@ -1718,7 +1718,7 @@ export default async function TasksPage() {
 ## Corpus grounding — dense tables & lists (2026-07-05 research)
 
 > Copyable rules with specific values, pulled from the app-UI research corpus
-> (`docs/research/notes/product-app-ui-patterns.md` → **"Data tables & dense
+> (the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → **"Data tables & dense
 > lists"**). Additive to the recipe above (which already encodes most of these).
 > Every source flag from the corpus is preserved verbatim, including the ones
 > that weaken a claim.
@@ -1819,5 +1819,5 @@ nav+selection state · mouse-only tables · timer-based submenu dismissal ·
 status-by-color-swatch alone · non-virtualized polling lists · fast-pulsing
 skeletons on sub-second loads.
 
-*Corpus note:* `docs/research/notes/product-app-ui-patterns.md` → **"Data tables
+*Corpus note:* the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → **"Data tables
 & dense lists"** (2024–2026 app-UI grounding corpus).

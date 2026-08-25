@@ -774,7 +774,7 @@ Linear/Vercel-grade — and the fix:
 ## Corpus grounding — empty / loading / error (2026-07-05 research)
 
 Additive appendix grounding the recipe above in the app-UI research corpus
-(`docs/research/notes/product-app-ui-patterns.md`, section **"## Empty / loading /
+(the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md), section **"## Empty / loading /
 error states"**). Winners **gate loading by duration**, make skeletons
 **content-shaped** to avoid CLS, go **optimistic** on user actions, and treat
 empty states as **intentional guided variants** with one named action. Values
@@ -887,5 +887,5 @@ toasts · clashing stock illustrations.
    IndexedDB + service-worker precache + background sync) — soften to "durable
    local queue".
 
-*Source:* `docs/research/notes/product-app-ui-patterns.md` → "## Empty / loading /
+*Source:* the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md) → "## Empty / loading /
 error states" (per-claim citations and confidence flags live inline there).

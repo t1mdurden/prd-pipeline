@@ -949,7 +949,7 @@ function OverviewSkeleton() {
 
 ## Corpus grounding — app navigation & sidebars (2026-07-05 research)
 
-Additive appendix. The recipe above stands as-is; this section grounds it in the research corpus's copyable rules and specific values so the build has hard numbers behind it. Source: `docs/research/notes/product-app-ui-patterns.md`, section **"Dashboard shell & app navigation/sidebars."** Confidence flags from the corpus are preserved verbatim — treat anything marked `[reconstructed]`, `[directional]`, or ⚠️ as a starting point to verify against your shipped version, not gospel.
+Additive appendix. The recipe above stands as-is; this section grounds it in the research corpus's copyable rules and specific values so the build has hard numbers behind it. Source: the superdesign repo's research corpus (docs/research/notes/product-app-ui-patterns.md), section **"Dashboard shell & app navigation/sidebars."** Confidence flags from the corpus are preserved verbatim — treat anything marked `[reconstructed]`, `[directional]`, or ⚠️ as a starting point to verify against your shipped version, not gospel.
 
 **One framing to keep straight:** most of the hard values below come from **shadcn/ui source + Vercel Geist**, not from Linear. Where the corpus attributes something to Linear it's *qualitative philosophy* (dim the chrome, personalize the sidebar) or *third-party-observed* shortcuts — don't relabel shadcn/Geist tokens as "what Linear does."
 

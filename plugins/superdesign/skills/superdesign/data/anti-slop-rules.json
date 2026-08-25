@@ -1,0 +1,296 @@
+{
+  "$schema": "anti-slop-rules/1",
+  "description": "SSOT for the machine-checkable half of the superdesign anti-slop gate. `references/anti-slop.md` used to claim this role and did not hold it: the detectors were hardcoded greps inside anti-slop-gate.sh, so a rule change was a two-place edit and drifted. The prose file keeps the catalog, the reasoning and the judge-only lens; the machine rules live here and anti-slop-gate.sh reads them.",
+  "layers": {
+    "src": "decidable by reading source text — anti-slop-gate.sh",
+    "dom": "needs a rendered page — design-audit.mjs (no rule carries this layer yet)"
+  },
+  "engines": {
+    "grep": "ERE over the comment-stripped file set",
+    "grep-raw": "ERE over the raw file set; the comment IS the defect",
+    "perl": "perl regex per line, for \\x{} codepoint ranges BSD grep cannot express",
+    "absent": "fires when the pattern appears NOWHERE in the target",
+    "offscale": "grep, then keep only px values outside `scale`",
+    "count-threshold": "grep, then fire only at >= `threshold` matches",
+    "purple-oklch": "grep, minus the DESIGN.md-declared and chart-validated exemptions",
+    "state-coverage": "select files by `selectPattern`, fail those missing any of `requireAll`"
+  },
+  "severities": {
+    "hard": "counts toward the exit code",
+    "note": "printed, never counted — investigate-not-fail"
+  },
+  "rules": [
+    {
+      "id": "AS-01",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "indigo/violet/purple default accent",
+      "pattern": "\\b(bg|text|border|ring|from|via|to)-(indigo|violet|purple)-|#6366f1|#8b5cf6",
+      "failureMode": "The reflexive accent. An indigo/violet/purple utility or hex is the single most common thing a model reaches for when no brand hue was decided, so its presence says the colour was never chosen. Fix: pick the accent in Phase 1 and express it as an OKLCH token.",
+      "source": "references/anti-slop.md § Automatable detectors (Starter Pack, hex tell-list)"
+    },
+    {
+      "id": "AS-01b",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "purple-oklch",
+      "label": "Tailwind purple/violet/indigo laundered through an OKLCH token",
+      "pattern": "oklch\\(\\s*(0?\\.[4-7][0-9]*|[4-7][0-9](\\.[0-9]+)?%)\\s+0?\\.(1[5-9]|[23][0-9])[0-9]*\\s+(2[7-9][0-9]|3[01][0-9])(\\.[0-9]+)?\\s*\\)",
+      "failureMode": "The same reflexive purple, converted to OKLCH so no hex or utility grep can see it — shadcn's own dark --chart-4 IS Tailwind purple-500. Window L 0.40-0.79, C >= 0.15, hue 270-319. The 270 floor is measured, not guessed: blue-700 sits at hue 264.376 and indigo-500, the first genuinely indigo step, at 277.117, so a 250 floor flagged every blue brand as purple. Two exemptions or the rule punishes every legitimately violet brand: (a) a custom property NAMED in DESIGN.md is the project's declared brand hue; (b) a --chart-N slot in a stylesheet whose palette already passes validate-chart-palette.mjs, because a computed check outranks a hue heuristic.",
+      "source": "references/anti-slop.md § Automatable detectors + Tailwind v4 palette, measured 2026-07-27"
+    },
+    {
+      "id": "AS-01c",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "unedited shadcn default chart/destructive palette (= Tailwind palette in OKLCH)",
+      "pattern": "0\\.646 0\\.222 41|0\\.6 0\\.118 184|0\\.398 0\\.07 227|0\\.828 0\\.189 84|0\\.769 0\\.188 70|0\\.488 0\\.243 264|0\\.696 0\\.17 162|0\\.627 0\\.265 30[34]|0\\.645 0\\.246 16|0\\.577 0\\.245 27|0\\.704 0\\.191 22",
+      "failureMode": "Class D: byte-identical to a published substrate default. It asserts nothing was decided here — a human who ran `shadcn init` and shipped trips it identically, and that is the correct verdict. Fix: derive the chart ramp from the brand hue and re-run validate-chart-palette.mjs.",
+      "source": "shadcn/ui default globals.css; references/anti-slop.md § Automatable detectors § SUBSTRATE-DEFAULTS"
+    },
+    {
+      "id": "AS-02",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "colored left-border strip",
+      "pattern": "\\bborder-l-(2|4|8)\\b.*\\b(border-)?(red|blue|green|amber|teal|primary|indigo|violet|purple)-|border-left:\\s*[0-9]",
+      "failureMode": "The card/nav tell: a coloured 2-4px left strip is the default way a model signals category or state without designing a hierarchy. Fix: carry the distinction with weight, gray level or spacing.",
+      "source": "references/anti-slop.md § Automatable detectors § LAYOUT & STRUCTURE"
+    },
+    {
+      "id": "AS-03",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "brand hue as active/selected fill",
+      "pattern": "data-\\[(state=selected|active=true)\\][^\\\"' ]*:?bg-primary|aria-current[^>]*bg-primary",
+      "failureMode": "Selection is a UI state, not a brand moment. Filling the selected row with the brand hue spends the accent's 10% budget on chrome and leaves nothing to point at what matters. Fix: a neutral accent surface plus a weight change.",
+      "source": "references/anti-slop.md § Automatable detectors § APP-UI"
+    },
+    {
+      "id": "AS-04",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "banned default display font",
+      "pattern": "font-?[Ff]amily:\\s*[\\\"']?(Inter|Roboto|Open Sans|Lato)\\b|--font-(sans|display):[^;]*(Inter|Roboto)\\b",
+      "failureMode": "Inter/Roboto/Open Sans/Lato as the display face is the typographic centre of the training distribution — no personality, and no evidence a face was chosen. Fix: name the archetype's face as a positive replacement (BANNED x -> USE y); a ban with no replacement leaves the probability mass nowhere to go.",
+      "source": "references/anti-slop.md § Automatable detectors § TYPOGRAPHY + Starter Pack"
+    },
+    {
+      "id": "AS-05",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "offscale",
+      "label": "off-scale spacing (outside the declared ramp)",
+      "pattern": "\\b[pmg][xytrbl]?-\\[[0-9]+px\\]",
+      "scale": [
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        16,
+        24,
+        32,
+        48,
+        64,
+        96
+      ],
+      "failureMode": "Class S: an arbitrary px value outside the project's own declared ramp. The ramp is enumerated, not `n % 4`: modulo passes 20/28/36/40/44 — every value the ramp deliberately omits — and would false-flag the two Fluent Nudge half-steps (6, 10). Fix: snap to the nearest ramp step or add the step to the ramp deliberately.",
+      "source": "references/tokens.md § the declared ramp; Fluent 2 Nudge steps"
+    },
+    {
+      "id": "AS-06",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "count-threshold",
+      "threshold": 4,
+      "label": "flat uniform 0.1 black shadow reused",
+      "pattern": "rgba\\(0,\\s*0,\\s*0,\\s*0?\\.1\\)",
+      "failureMode": "One flat black shadow at exactly 0.1 opacity, reused everywhere, is elevation with no role in it — every surface floats the same amount, so depth carries no information. Fires only at 4+ occurrences: a single use is a choice, a fourth is a default. Fix: a role-based scale (raised / overlay / popover), tinted toward the surface hue.",
+      "source": "references/anti-slop.md § Automatable detectors § DEPTH/SHADOW + Starter Pack"
+    },
+    {
+      "id": "AS-07",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "perl",
+      "label": "leading emoji in heading",
+      "pattern": "<h[1-6][^>]*>\\s*[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{2190}-\\x{21FF}]",
+      "failureMode": "A leading emoji in an H1-H6 is one of the strongest 'a chat model wrote this' tells and does the job an icon component should do, with no size, colour or a11y control. Fix: an icon element, or nothing.",
+      "source": "references/anti-slop.md § Automatable detectors § CONTENT & COPY"
+    },
+    {
+      "id": "AS-08",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "Tailwind v3 syntax in a v4 project (stale-weights leak)",
+      "requiresPattern": "@import \\\"tailwindcss\\\"",
+      "pattern": "@tailwind (base|components|utilities)|bg-gradient-to-|focus:outline-none|\\bflex-(shrink|grow)-|\\b(bg|text|border)-opacity-[0-9]|overflow-ellipsis|decoration-slice|class(Name)?=\\\"([^\\\"]*[[:space:]:])?ring([[:space:]]|\\\")",
+      "failureMode": "v3 syntax inside a v4 project is not a style choice, it is the model emitting weights that predate the framework the project actually uses — and half of it silently does nothing. Bare `ring` must be a whole utility inside a class attribute, or the rule eats the word 'ring' in prose and the `ring` half of v4's own `ring-ring` colour utility. Fix: the v4 spelling (tailwindcss.com/docs/upgrade-guide).",
+      "source": "tailwindcss.com/docs/upgrade-guide"
+    },
+    {
+      "id": "AS-09",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep-raw",
+      "label": "banned output marker (lazy stub / self-narration)",
+      "pattern": "//[[:space:]]*(\\.\\.\\.|rest of( the)? code|implement here|TODO|similar to above|continue pattern|add more as needed)|/\\*[[:space:]]*\\.\\.\\.[[:space:]]*\\*/|for brevity|the rest follows the same pattern|similarly for the remaining|and so on|I.ll leave that as an exercise",
+      "failureMode": "A stub marker means the file was never finished and the gap was narrated instead of filled. Read from the RAW file, not the comment-stripped scan — the comment IS the defect here.",
+      "source": "references/anti-slop.md § Automatable detectors § CONTENT & COPY"
+    },
+    {
+      "id": "AS-10",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep-raw",
+      "label": "self-narrating comment in shipped code",
+      "pattern": "//[[:space:]]*(Now |Next,|Here we|We (also )?(need|want|will)|Let.s |This (is|will) )",
+      "failureMode": "Chat narration left in the artifact: the comment explains the assistant's next step rather than the code's reason. Read from the RAW file for the same reason as AS-09.",
+      "source": "references/anti-slop.md § Automatable detectors § CONTENT & COPY"
+    },
+    {
+      "id": "AS-11",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "outline-none with no focus-visible replacement",
+      "pattern": "\\boutline-none\\b",
+      "excludeMatch": [
+        "focus-visible"
+      ],
+      "failureMode": "In Tailwind v4 `outline-none` also kills the forced-colors outline, so a keyboard user in high-contrast mode loses the focus indicator entirely. Only a defect when nothing restores a visible one: shadcn's own primitives pair `outline-none` with `focus-visible:ring-[3px]` on the same class string, which is correct, and flagging the bare token made every vetted primitive a tell and taught the reader to ignore the detector.",
+      "source": "Tailwind v4 docs (outline-hidden); WCAG 2.4.7"
+    },
+    {
+      "id": "AS-12",
+      "layer": "src",
+      "severity": "note",
+      "engine": "grep",
+      "label": "round element < 34px — a violation only if it is a target (SC 2.5.8 inscribed square)",
+      "pattern": "rounded-full[^\\\"']*\\b(size|h)-(4|5|6|7|8)\\b|\\b(size|h)-(4|5|6|7|8)\\b[^\\\"']*rounded-full",
+      "excludeMatch": [
+        "pointer-events-none|aria-hidden",
+        "\\bh-[0-9]+\\b[^\\\"']*\\bw-[0-9]+\\b|\\bw-[0-9]+\\b[^\\\"']*\\bh-[0-9]+\\b"
+      ],
+      "failureMode": "A round target needs d >= 34px for its inscribed square to reach 24x24. NOTE, never a hard tell: grep sees geometry and never interactivity. A `size-4 rounded-full` may be a switch thumb (pointer-events-none, not a target at all) or a decorative dot, and `h-5 w-9 rounded-full` is a pill track whose inscribed square is not its height. Those two shapes are excluded outright; what survives still needs a human to confirm the element is a target.",
+      "source": "WCAG 2.2 SC 2.5.8 (inscribed-square method)"
+    },
+    {
+      "id": "AS-12b",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "placeholder font never replaced",
+      "pattern": "REPLACE-ME-FONT",
+      "failureMode": "tokens.md / theme.css plant this marker precisely so the gate can catch a theme that was generated and never art-directed. Its presence means Phase 2 ran and Phase 1 did not.",
+      "source": "assets/theme.css, planted marker"
+    },
+    {
+      "id": "AS-13",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "positive tabIndex",
+      "pattern": "tabIndex=\\{[1-9]",
+      "failureMode": "A positive tabIndex pulls the element out of DOM order and reorders focus for the whole document, so the keyboard path stops matching the visual one (SC 2.4.3). Fix: order the DOM, use 0 or -1.",
+      "source": "WCAG 2.1 SC 2.4.3"
+    },
+    {
+      "id": "AS-14",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "legacy combobox (aria-owns / role=combobox on a non-input)",
+      "pattern": "aria-owns=|<(div|span)[^>]*role=\\\"combobox\\\"",
+      "failureMode": "The ARIA 1.0/1.1 combobox shape. Screen readers shipped support for the 1.2 pattern years ago and the old one now announces inconsistently across NVDA/JAWS/VoiceOver. Fix: role=combobox on the input itself, aria-expanded + aria-controls.",
+      "source": "ARIA 1.2 combobox pattern (w3.org/WAI/ARIA/apg)"
+    },
+    {
+      "id": "AS-15",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "render-blocking @import of Google Fonts",
+      "pattern": "@import\\s+url\\(.{0,2}https://fonts\\.googleapis\\.com",
+      "failureMode": "A CSS @import of a font stylesheet serialises two round-trips before any text paints, which lands directly on LCP. Fix: <link rel=preconnect> + <link rel=stylesheet>, or self-host.",
+      "source": "web.dev LCP guidance"
+    },
+    {
+      "id": "AS-16",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "transition-all",
+      "pattern": "\\btransition-all\\b",
+      "failureMode": "`transition-all` animates every property that ever changes, including layout properties nobody meant to animate, so it is both a motion tell and an INP cost. Fix: name the properties (transform, opacity, colors).",
+      "source": "references/anti-slop.md § Automatable detectors § MOTION"
+    },
+    {
+      "id": "AS-17",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "perl",
+      "label": "img without width/height (CLS)",
+      "pattern": "<img\\b(?!.*\\bwidth=)(?!.*\\bfill\\b)",
+      "perlExpr": "/<img\\b/ && !/\\bwidth=/ && !/\\bfill\\b/",
+      "failureMode": "An <img> with no intrinsic size reserves no box, so everything below it jumps when the image arrives — a direct CLS hit. `fill` is exempt because a Next.js fill image gets its box from the positioned parent.",
+      "source": "web.dev CLS guidance"
+    },
+    {
+      "id": "AS-18",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "absent",
+      "label": "no prefers-reduced-motion reset",
+      "pattern": "prefers-reduced-motion",
+      "failureMode": "Fires when the WHOLE target contains no reduced-motion reset anywhere. Vestibular disorders are not an edge case and SC 2.3.3 is not optional; a build with motion and no reset has simply never considered the reader who cannot take it.",
+      "source": "WCAG 2.1 SC 2.3.3"
+    },
+    {
+      "id": "AS-19",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "grep",
+      "label": "generator deployment artifact left in the build",
+      "pattern": "lovable\\.dev|Built with v0|Built on Lovable|\\.replit\\.dev|Crafted with love|Built with care",
+      "failureMode": "A deploy string from the generator that produced the page. Unlike palette-based attribution — which the state of the art cannot support (macro F1 0.345 on which-generator) — a literal deploy string is class D and takes seconds to check.",
+      "source": "arxiv.org/pdf/2604.26990v1 (generator attribution collapses); references/anti-slop.md § Automatable detectors"
+    },
+    {
+      "id": "AS-20",
+      "layer": "src",
+      "severity": "hard",
+      "engine": "state-coverage",
+      "selectPattern": "useQuery|useSWR|useInfiniteQuery|useMutation|useLoaderData|useActionData|useFetcher|getServerSideProps|getStaticProps|createServerFn|await fetch\\(|\\.then\\(|axios\\.|trpc\\.|supabase\\.|prisma\\.",
+      "requireAll": [
+        "isLoading|isPending|Skeleton",
+        "isError|error",
+        "\\.length === 0|<Empty"
+      ],
+      "label": "data components missing loading/error/empty",
+      "failureMode": "A component that fetches has three states besides success, and shipping only the success state is the most common way a generated screen looks finished and is not. SELECTION IS THE WHOLE RULE (field-run F5): it used to select any file containing `.map(`, which is every static marketing section that maps over a literal array — those were then asked for loading/error/empty states they cannot have, making the detector unpassable on any marketing surface. The selector now requires an actual async or data-source signal; a `.map()` over a hardcoded array is not a data component.",
+      "source": "evals/field-runs/README.md F5; references/anti-slop.md § Automatable detectors § STATES, TOKENS & A11Y"
+    },
+    {
+      "id": "AS-N1",
+      "layer": "src",
+      "severity": "note",
+      "engine": "perl",
+      "label": "curly quotes/apostrophes in source strings (ChatGPT/DeepSeek tell)",
+      "pattern": "[\\x{2018}\\x{2019}\\x{201C}\\x{201D}]",
+      "limit": 10,
+      "failureMode": "Investigate, never fail. Curly quotes are a ChatGPT/DeepSeek default, but Chicago style, Word and macOS substitution produce them too — the human population behind this signal is far too large for it to block a ship. Class P: density only.",
+      "source": "references/anti-slop.md § Automatable detectors § 0 (class P: no single class-P tell may block a ship)"
+    }
+  ]
+}

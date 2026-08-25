@@ -10,10 +10,15 @@
 // documented in design-research/reverse-engineering/motion-2-springs-easing-generators.md §4.
 // Do NOT hand-tune the emitted numbers — regenerate.
 //
-//   node scripts/spring-tokens.mjs             # print the @theme block
-//   node scripts/spring-tokens.mjs --json      # machine-readable
-//   node scripts/spring-tokens.mjs --check F   # F's --ease/--dur-spring-* vs this generator
-//                                              # (exit = drifted tokens; the anti-slop gate calls it)
+//   node .claude/skills/superdesign/scripts/spring-tokens.mjs            # print the @theme block
+//   node .claude/skills/superdesign/scripts/spring-tokens.mjs --json     # machine-readable
+//   node .claude/skills/superdesign/scripts/spring-tokens.mjs --check F  # F's --ease/--dur-spring-*
+//
+// EXIT-CODE CONTRACT — identical in every superdesign gate (ARCHITECTURE.md §2):
+//   0        clean
+//   1–63     the number of violations. A count above 63 is clamped to 63 and the line says so.
+//   64–79    harness error — 64 usage · 65 missing dep · 66 navigation failed · 67 no target
+// Here a violation is one token that drifted from the generator.
 //
 // A `linear()` curve is normalised to its own settle duration: the emitted --ease-* and
 // --dur-* tokens are a PAIR. Using one with a different duration distorts the physics.
@@ -76,9 +81,15 @@ if (checkIdx !== -1) {
   const file = process.argv[checkIdx + 1]
   if (!file) {
     console.error('usage: spring-tokens.mjs --check <css-file>')
-    process.exit(2)
+    process.exit(64) // 64 = usage
   }
-  const css = readFileSync(file, 'utf8')
+  let css
+  try {
+    css = readFileSync(file, 'utf8')
+  } catch (e) {
+    console.error(`✗ spring tokens: cannot read ${file} — ${e.message}`)
+    process.exit(67) // 67 = no target
+  }
   const norm = (s) => s.replace(/\s+/g, ' ').trim()
   const drift = []
   for (const r of rows) {
@@ -92,7 +103,9 @@ if (checkIdx !== -1) {
   console.log(drift.length === 0
     ? `✓ spring tokens match the generator (${file})`
     : `✗ ${drift.length} spring token(s) hand-edited — regenerate with \`node scripts/spring-tokens.mjs\``)
-  process.exit(drift.length)
+  // Contract: 1–63 is the violation count; clamp so a count can never be read as a harness code.
+  if (drift.length > 63) console.log(`  (exit code clamped to 63; ${drift.length} drifted token(s) found)`)
+  process.exit(Math.min(drift.length, 63))
 } else if (process.argv.includes('--json')) {
   console.log(JSON.stringify(rows, null, 2))
 } else {
