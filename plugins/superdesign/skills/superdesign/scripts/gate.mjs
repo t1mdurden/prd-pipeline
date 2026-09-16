@@ -36,7 +36,8 @@
 // their exit codes fold into its count. Running them again here would double-count one defect.
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -178,8 +179,31 @@ run('anti-slop', 'bash', [join(HERE, 'anti-slop-gate.sh'), '--exclude', EXCLUDE_
 // 4. The rendered gate. Geometry and axe need a page, so it runs only when one is named.
 if (url) {
   run('design-audit', process.execPath, [join(HERE, 'design-audit.mjs'), '--url', url, '--theme', 'light,dark'])
+
+  // 4b. The ground-tint gate — MUST 5's missing threshold. It reads a reference card, so the page
+  //     has to be measured first. The card is an intermediate, not a deliverable: it goes to the
+  //     temp dir, because this dispatcher is pointed at a SOURCE directory and must not write into
+  //     it. A project that wants to keep the card runs `extract-reference.mjs --url … --out ref/ours`
+  //     itself; that is Phase 0's job, not this one's.
+  const card = join(tmpdir(), `superdesign-gate-ours-${process.pid}.json`)
+  let captured = true
+  try {
+    execFileSync(process.execPath, [join(HERE, 'extract-reference.mjs'), '--url', url, '--out', card.replace(/\.json$/, '')],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 32 << 20 })
+  } catch (e) {
+    captured = false
+    // Capture is harness work, not a design verdict. Surface its code, never count it as violations.
+    const code = e.status >= 64 && e.status <= 79 ? e.status : 65
+    if (!asJson) console.error(`✗ gate: could not measure ${url} for the ground-tint gate — exit ${code}`)
+    record('ground-tint', code, 'the card could not be captured')
+  }
+  if (captured && existsSync(card)) {
+    run('ground-tint', process.execPath, [join(HERE, 'extract-reference.mjs'), '--check-ours', card])
+    try { unlinkSync(card); unlinkSync(card.replace(/\.json$/, '.md')) } catch { /* best effort */ }
+  }
 } else if (!asJson) {
-  console.log('\ndesign-audit — skipped: no --url. Geometry and contrast are NOT checked by a source gate.')
+  console.log('\ndesign-audit + ground-tint — skipped: no --url. Geometry, contrast and how much of the')
+  console.log('  page is painted a tinted ground are NOT checked by a source gate.')
   console.log('  Every real defect on the dkuvpn run came from rendering (field-run F11): typecheck, build,')
   console.log('  three grep gates and the contrast solver were all green while the hero was visibly broken.')
 }

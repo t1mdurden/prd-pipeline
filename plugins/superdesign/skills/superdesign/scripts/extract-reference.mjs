@@ -54,9 +54,11 @@ const diffPair = argv.indexOf('--diff')
 
 const USAGE = `usage:
   node scripts/extract-reference.mjs --url <url> [--viewport 1440x900] [--theme light|dark] [--out path] [--json]
-  node scripts/extract-reference.mjs --diff <reference.json> <ours.json>`
+  node scripts/extract-reference.mjs --diff <reference.json> <ours.json>
+  node scripts/extract-reference.mjs --check-ours <ours.json>`
 
 if (diffPair !== -1) { await differentiationGate(argv[diffPair + 1], argv[diffPair + 2]); process.exit(0) }
+if (argv.includes('--check-ours')) { groundTintGate(arg('check-ours')) }
 if (!url) { console.error(USAGE); process.exit(64) } // 64 = usage
 
 /**
@@ -90,6 +92,91 @@ async function need(name) {
     } catch { /* not there either */ }
   }
   throw new Error(`${name} is not resolvable from this script, from ${process.cwd()}, or from silver`)
+}
+
+/**
+ * The ground-tint gate. MUST 5 says "put the saturated brand hue in the ~10% accent role, not
+ * across surfaces" and then admits, in the same paragraph, that "what no script owns is the
+ * *threshold*, so the number is reported and nothing refuses a 40% accent." This is that
+ * threshold — and it is NOT accentShare, which is the number MUST 5 names.
+ *
+ * WHY NOT accentShare. Measured over the 18 logistics peers in a real field run, accentShare runs
+ * 0.00–48.5% (thermoking 48.5, rhenus 32.7, dachser 20.7) and the build the owner rejected scores
+ * 19.2% — LOWER than three of its own measured references. A cap on accentShare either passes the
+ * reject or fails half the corpus. The same is true of total chromatic paint (peers 0.0–51.5%,
+ * reject 80.0%, accept 17.5% — rhenus and thermoking both sit above the accepted build). Both are
+ * printed below, and neither gates.
+ *
+ * WHAT SEPARATES is narrower: painted share of LIGHT chromatic ground — a tinted-paper slab, the
+ * thing that reads as "the whole page is washed in the brand colour". `d31e529`'s own commit body
+ * had already measured it and shipped against it: "across the ten companies in his own market the
+ * median number of hue families painted as surfaces is ONE and ZERO of ten paint a light chromatic
+ * ground."
+ *
+ * THE CAP IS CALIBRATED. Corpus, 2026-09-16, `--out` cards measured by this script:
+ *   peers — the 18 in fastway/site/ref/www-*.json: median 0.0%, max 4.5% (sennder)
+ *   accept— the build the owner called ideal: 0.0%
+ *   reject— the build he rejected six times in three days: 45.2%, one ground at L 0.930 C 0.030
+ * Good and slop separate by 10x. The cap sits in the gap at 12% — 2.7x above the worst peer,
+ * 3.8x below the failure. Re-run before moving it:
+ *   for f in <corpus>/*.json; do node scripts/extract-reference.mjs --check-ours "$f"; done
+ * and `scripts/fixtures/ground-tint/verify.sh` must stay green.
+ *
+ * Exit code = the number of violations, per the contract at the top of this file.
+ */
+function groundTintGate(oursPath) {
+  if (!oursPath) { console.error(USAGE); process.exit(64) } // 64 = usage
+  let O
+  try { O = JSON.parse(readFileSync(oursPath, 'utf8')) } catch (e) {
+    console.error(`✗ ${e.message.split('\n')[0]}`)
+    console.error('  The argument is the .json written by --out. Capture your own build first:')
+    console.error('    node scripts/extract-reference.mjs --url <your dev-server url> --out ref/ours')
+    process.exit(67) // 67 = no target
+  }
+  const bgs = O?.palette?.backgrounds
+  if (!Array.isArray(bgs) || !bgs.length) {
+    console.error('✗ no palette.backgrounds in that card — it was not written by --out, or the page painted nothing')
+    process.exit(67) // 67 = no target
+  }
+  // "oklch(0.930 0.030 248.0)" and "oklch(0.981 0.005 247.9) / 0.96" both parse; a translucent
+  // ground still paints, so alpha is deliberately ignored.
+  const OK = /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/
+  const rows = []
+  for (const b of bgs) {
+    const m = OK.exec(b.oklch || '')
+    if (m) rows.push({ L: +m[1], C: +m[2], H: +m[3], w: +b.weight || 0, raw: b.raw || b.oklch })
+  }
+  const total = rows.reduce((n, r) => n + r.w, 0) || 1
+  for (const r of rows) r.share = r.w / total
+
+  const L_PAPER = 0.75   // above this a ground reads as paper, not as an inverted panel
+  const C_TINT = 0.02    // at or above this the paper is carrying a hue, not a warm/cool neutral
+  const CAP = 0.12       // calibrated, see above
+
+  const tinted = rows.filter((r) => r.L >= L_PAPER && r.C >= C_TINT).sort((a, b) => b.share - a.share)
+  const lightChroma = tinted.reduce((n, r) => n + r.share, 0)
+  const allChroma = rows.filter((r) => r.C >= C_TINT).reduce((n, r) => n + r.share, 0)
+  const accentShare = O?.palette?.accentShare
+
+  const pc = (x) => `${(x * 100).toFixed(1)}%`
+  console.log(`ground-tint — ${oursPath}`)
+  const verdict = lightChroma > CAP ? 'FAIL' : 'PASS'
+  console.log(`[${verdict}] light chromatic ground   ${pc(lightChroma)} of painted area (cap ${pc(CAP)}; peer median 0.0%, peer max 4.5%)`)
+  for (const r of tinted) {
+    console.log(`         ${pc(r.share).padStart(6)}  oklch(${r.L.toFixed(3)} ${r.C.toFixed(3)} ${r.H.toFixed(1)})  ${r.raw}`)
+  }
+  console.log(`[note ] all chromatic paint       ${pc(allChroma)} — reported, never gated: peers run 0.0–51.5%`)
+  console.log(`[note ] accentShare               ${accentShare == null ? 'absent' : pc(accentShare)} — reported, never gated: peers run 0.0–48.5%`)
+
+  if (verdict === 'FAIL') {
+    console.log('')
+    console.log('  A light ground carrying the brand hue over more of the page than every measured peer')
+    console.log('  is the "the whole page is washed in our colour" failure. Two ways out, both legal:')
+    console.log('  pull the tint under C 0.02 so it is a warm/cool neutral, or shrink the slab.')
+    console.log('  An inverted DARK panel is not this defect and is not counted — L must be >= 0.75.')
+    process.exit(1)
+  }
+  process.exit(0)
 }
 
 /**

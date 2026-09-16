@@ -129,8 +129,22 @@ screen, section, state and component and write the count into your working notes
 then cross-check it before "done" — the missing-step class Plan-and-Solve (arXiv 2305.04091) and
 DCGen (arXiv 2406.16386) both target, and one no gate can see, because a gate only reads files that
 exist.
-- **BUILD** — compose from `references/cookbook/`: 15 recipes, landing · app · flow, plus
-  `texture.md` at `TEXTURE_LEVEL` > 0. Read the recipe first; write the real copy into `content.ts`
+- **BUILD** — compose from `references/cookbook/`. **Open the recipe by name; do not `ls` and
+  guess.** Twelve of these sixteen files were named nowhere in this package until 2026-09-16, and
+  the field run that exposed it shipped a lead-generation landing page with **zero input fields**
+  and its five client logos set as text, while `forms.md` and `marketing-sections.md` §9.5 (a logo
+  cloud) sat unread on disk.
+
+  | landing | | app | | flow | |
+  |---|---|---|---|---|---|
+  | `hero.md` | split hero, two ranked CTAs, figures off 13 live sites | `dashboard-shell.md` | app shell, nav rail, density tiers | `auth.md` | sign-in / sign-up |
+  | `marketing-sections.md` | bento · testimonial marquee · **logo cloud** · CTA | `data-table.md` | sortable, filterable, dense; the grid keyboard model | `onboarding.md` | multi-step flow |
+  | `nav-header.md` | header, nav, mobile menu | `command-menu.md` | ⌘K palette | `forms.md` | **layout, validation timing, error surfaces** |
+  | `pricing.md` | pricing table | `settings-page.md` | settings surface | `empty-states.md` | empty · loading · error, as a deliverable |
+  | `cards.md` | card variants | `dialogs.md` | dialog · sheet · drawer | | |
+  | `code-panel-hero.md` | code-panel hero, AI-dev-tool lane | | | | |
+
+  Plus `texture.md` at `TEXTURE_LEVEL` > 0. Read the recipe first; write the real copy into `content.ts`
   before the first div. Fork exactly 3 on a **declared** axis, never on sampling noise — A = cookbook
   default at the dials, B = `DESIGN_VARIANCE` +3, C = `VISUAL_DENSITY` +2 — into `design_iterations/`;
   name the winner and the one property carried over from each loser, then iterate only the winner.
@@ -242,9 +256,14 @@ a mapping to a green exit that decides nothing.
 
 5. **Put the saturated brand hue in the ~10% accent role, not across surfaces** — 60-30-10: ~60%
    neutral surface, ~30% secondary, ~10% accent, which signals "act here" *because* it is scarce.
-   *Fails as:* a brand wash over every surface, every gate green. `extract-reference.mjs` does
-   compute `palette.accentShare` for our own build too — what no script owns is the *threshold*, so
-   the number is reported and nothing refuses a 40% accent. Read it in Phase 5 and judge it.
+   *Fails as:* a brand wash over every surface, every gate green. **Half of this now has an exit
+   code:** `extract-reference.mjs --check-ours <ours.json>` caps LIGHT chromatic ground at 12% of
+   painted area, calibrated 2026-09-16 against 18 measured logistics peers (median 0.0%, max 4.5%),
+   one owner-accepted build (0.0%) and one owner-rejected build (45.2% stored, 70.3% live).
+   `gate.mjs` runs it whenever `--url` is given. **`accentShare` is NOT that number and never was** —
+   over the same 18 peers it runs 0.0–48.5%, and the rejected build scores 19.2%, *lower* than three
+   of its own references. It is still printed, still ungated, and MUST 5's remaining half — the
+   60-30-10 split itself — is still yours to judge in Phase 5.
 6. **Every spacing value on the 4px grid, and card padding ≤ inter-card gap (`internal ≤ external`).**
    *Fails as:* card contents crowding their neighbours' — grouping reads inverted while no single
    value is out of range. `design-audit.mjs` computes the grid half (`off4`, cap 8); the
@@ -285,6 +304,7 @@ returns 4 means four violations, never "Playwright is missing". They live in
 | `check-tw-merge-tokens.mjs` | `cn()` silently eating custom `--text-*` tokens | tokens `twMerge` will drop |
 | `spring-tokens.mjs --check` | spring `linear()` tokens against their generator | drifted tokens |
 | `extract-reference.mjs --diff` | Phase 5 differentiation over six mechanics | axes that did NOT move |
+| `extract-reference.mjs --check-ours` | Phase 5 — how much of the page is a LIGHT chromatic ground; MUST 5's missing threshold, cap 12% of painted area | 1 when the cap is breached; the offending grounds are named |
 | `check-pointers.mjs` | every path and anchor this package names | dead pointers |
 
 `design-audit.mjs` also prints five **uncapped** numbers that measurably do not separate good work

@@ -1,0 +1,495 @@
+{
+  "url": "http://127.0.0.1:8801/",
+  "viewport": "1440x900",
+  "theme": "light",
+  "title": "Refrigerated trucks for your cargo — quotes & availability | FastWay",
+  "isDark": false,
+  "captured": {
+    "waitedFor": "networkidle",
+    "consentDismissed": null,
+    "fontsReady": true
+  },
+  "palette": {
+    "surface": "oklch(0.981 0.005 247.9)",
+    "accent": "oklch(0.409 0.101 250.5)",
+    "accentBasis": "repeated CTA fill",
+    "accentShare": 0.010208421801250537,
+    "brandSurface": "oklch(0.278 0.056 249.8)",
+    "backgrounds": [
+      {
+        "oklch": "oklch(0.981 0.005 247.9)",
+        "weight": 1377855,
+        "raw": "rgb(246, 249, 252)"
+      },
+      {
+        "oklch": "oklch(0.950 0.015 241.8)",
+        "weight": 1071466.34375,
+        "raw": "rgb(230, 240, 248)"
+      },
+      {
+        "oklch": "oklch(1.000 0.000 0.0)",
+        "weight": 800666.5517578125,
+        "raw": "rgb(255, 255, 255)"
+      },
+      {
+        "oklch": "oklch(0.278 0.056 249.8)",
+        "weight": 636014.7424316406,
+        "raw": "rgb(16, 42, 67)"
+      },
+      {
+        "oklch": "oklch(0.981 0.005 247.9) / 0.96",
+        "weight": 181440,
+        "raw": "rgba(246, 249, 252, 0.96)"
+      },
+      {
+        "oklch": "oklch(0.278 0.056 249.8) / 0.93",
+        "weight": 47984.1796875,
+        "raw": "rgba(16, 42, 67, 0.93)"
+      },
+      {
+        "oklch": "oklch(0.409 0.101 250.5)",
+        "weight": 42445.3125,
+        "raw": "rgb(22, 76, 126)"
+      }
+    ],
+    "text": [
+      "oklch(0.504 0.036 244.2)",
+      "oklch(0.278 0.056 249.8)",
+      "oklch(0.981 0.005 247.9)",
+      "oklch(1.000 0.000 0.0)"
+    ],
+    "border": [
+      "oklch(0.904 0.018 245.4)",
+      "oklch(0.881 0.051 241.1) / 0.19",
+      "oklch(1.000 0.000 0.0) / 0.22"
+    ]
+  },
+  "type": {
+    "faces": [
+      "Geologica Variable 100 900 normal",
+      "Geologica Variable 100 900 normal (unloaded)",
+      "Martian Mono Variable 100 800 normal (unloaded)",
+      "Martian Mono Variable 100 800 normal"
+    ],
+    "fontFaceFamilies": [
+      "Geologica Variable",
+      "Martian Mono Variable"
+    ],
+    "stacks": [
+      [
+        "\"Geologica Variable\", Arial, sans-serif",
+        3490
+      ],
+      [
+        "\"Martian Mono Variable\", monospace",
+        59
+      ]
+    ],
+    "ramp": [
+      {
+        "k": "14/400/23/0/none",
+        "n": 10,
+        "chars": 1155,
+        "sample": "We welcome refrigerated truck owners and transport companies"
+      },
+      {
+        "k": "12/400/20/0/none",
+        "n": 12,
+        "chars": 317,
+        "sample": "We confirm the truck, price and pickup timing for your cargo"
+      },
+      {
+        "k": "13/400/21/0/none",
+        "n": 6,
+        "chars": 288,
+        "sample": "We select a vehicle from our own or partner fleet and agree "
+      },
+      {
+        "k": "11/400/18/0/none",
+        "n": 7,
+        "chars": 182,
+        "sample": "Refrigerated transport · Kazakhstan, CIS and Europe"
+      },
+      {
+        "k": "10/400/17/0/none",
+        "n": 11,
+        "chars": 160,
+        "sample": "Язык / Тіл / Language"
+      },
+      {
+        "k": "15/500/25/0/none",
+        "n": 5,
+        "chars": 150,
+        "sample": "How much does refrigerated transport cost?"
+      },
+      {
+        "k": "17/400/28/0/none",
+        "n": 1,
+        "chars": 148,
+        "sample": "Tell us your pickup and delivery locations. We will check tr"
+      },
+      {
+        "k": "15/500/22/-0.30/none",
+        "n": 11,
+        "chars": 109,
+        "sample": "CIS countries Kazakhstan"
+      },
+      {
+        "k": "8/400/13/0.80/none",
+        "n": 6,
+        "chars": 103,
+        "sample": "02 / INTERNATIONAL"
+      },
+      {
+        "k": "12/500/20/0/none",
+        "n": 6,
+        "chars": 80,
+        "sample": "When do you need a truck?"
+      },
+      {
+        "k": "44/600/51/-1.54/none",
+        "n": 3,
+        "chars": 73,
+        "sample": "What do you need to ship?"
+      },
+      {
+        "k": "14/500/23/0/none",
+        "n": 4,
+        "chars": 73,
+        "sample": "Find a refrigerated truck"
+      },
+      {
+        "k": "14/600/20/0/none",
+        "n": 4,
+        "chars": 72,
+        "sample": "Check price & availability"
+      },
+      {
+        "k": "10/400/16/0/none",
+        "n": 1,
+        "chars": 72,
+        "sample": "WhatsApp will open with your enquiry. Review the message and"
+      }
+    ],
+    "measureCh": 99
+  },
+  "radius": {
+    "histogram": [
+      [
+        8,
+        48
+      ],
+      [
+        7,
+        24
+      ],
+      [
+        5,
+        20
+      ],
+      [
+        10,
+        16
+      ],
+      [
+        4,
+        12
+      ],
+      [
+        6,
+        4
+      ],
+      [
+        12,
+        4
+      ],
+      [
+        "pill/circle",
+        4
+      ]
+    ],
+    "base": 8,
+    "pillCorners": 4
+  },
+  "shadow": [],
+  "spacing": {
+    "unit": 2,
+    "gridShare": 0.9672131147540983,
+    "histogram": [
+      [
+        12,
+        58
+      ],
+      [
+        16,
+        38
+      ],
+      [
+        20,
+        34
+      ],
+      [
+        18,
+        27
+      ],
+      [
+        6,
+        23
+      ],
+      [
+        10,
+        21
+      ],
+      [
+        22,
+        16
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        28,
+        15
+      ],
+      [
+        8,
+        14
+      ],
+      [
+        24,
+        14
+      ],
+      [
+        40,
+        11
+      ],
+      [
+        3,
+        10
+      ],
+      [
+        32,
+        9
+      ]
+    ],
+    "containers": [
+      [
+        1240,
+        17
+      ],
+      [
+        1440,
+        11
+      ],
+      [
+        696,
+        10
+      ],
+      [
+        688,
+        6
+      ],
+      [
+        584,
+        4
+      ],
+      [
+        616,
+        3
+      ]
+    ],
+    "centred": 22
+  },
+  "motion": {
+    "durations": [
+      [
+        200,
+        18
+      ],
+      [
+        160,
+        10
+      ]
+    ],
+    "easings": [
+      [
+        "ease",
+        28
+      ]
+    ],
+    "properties": [
+      [
+        "background",
+        11
+      ],
+      [
+        "transform",
+        11
+      ],
+      [
+        "border-color",
+        6
+      ]
+    ],
+    "keyframes": 0,
+    "medianUiMs": 200,
+    "medianAllMs": 200
+  },
+  "texture": {
+    "gradient": 0,
+    "image": 0,
+    "svgNoise": 0,
+    "backdropBlur": 1,
+    "blend": 5,
+    "filter": 0
+  },
+  "dials": {
+    "TEXTURE_LEVEL": 0,
+    "VISUAL_DENSITY": "compact",
+    "GRID_DISCIPLINE": "asymmetric or left-anchored",
+    "MOTION_INTENSITY": "moderate",
+    "DESIGN_VARIANCE": "8+ radius steps · 0+ shadow recipes · 14+ type rows (each list is truncated — read the tables)"
+  },
+  "customProperties": {
+    "--bg": "#f6f9fc",
+    "--surface": "#fff",
+    "--muted": "#536778",
+    "--primary": "#164c7e",
+    "--primary-hover": "#0e365d",
+    "--accent": "#d5ebfa",
+    "--shadow": "0 20px 55px #102a4310"
+  },
+  "sourceTokens": {
+    "ok": true,
+    "reason": null,
+    "via": "source fetch (before the browser)",
+    "stylesheets": 0,
+    "inlineBlocks": 1,
+    "bytes": 170497,
+    "names": 11,
+    "brandNames": 11,
+    "declarations": 22,
+    "themed": 11,
+    "themedScoped": 0,
+    "scopedOnly": 0,
+    "namedBackgrounds": 6,
+    "topBackgrounds": 7,
+    "radiusNames": [],
+    "radiusBaseNamed": null,
+    "declaredUnseenTotal": 2,
+    "byCategory": {
+      "color": 10,
+      "shadow": 1
+    },
+    "tokens": {
+      "--bg": {
+        "category": "color",
+        "base": "#f6f9fc",
+        "light": null,
+        "dark": "#101b29",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--surface": {
+        "category": "color",
+        "base": "#fff",
+        "light": null,
+        "dark": "#172638",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--ink": {
+        "category": "color",
+        "base": "#102a43",
+        "light": null,
+        "dark": "#eef6ff",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--muted": {
+        "category": "color",
+        "base": "#536778",
+        "light": null,
+        "dark": "#b2c2d3",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--line": {
+        "category": "color",
+        "base": "#d6e1eb",
+        "light": null,
+        "dark": "#33475d",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--ice": {
+        "category": "color",
+        "base": "#e6f0f8",
+        "light": null,
+        "dark": "#1c3148",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--primary": {
+        "category": "color",
+        "base": "#164c7e",
+        "light": null,
+        "dark": "#bbddf7",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--primary-hover": {
+        "category": "color",
+        "base": "#0e365d",
+        "light": null,
+        "dark": "#e0f0ff",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--accent": {
+        "category": "color",
+        "base": "#d5ebfa",
+        "light": null,
+        "dark": "#254461",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--nav": {
+        "category": "color",
+        "base": "rgba(246,249,252,.96)",
+        "light": null,
+        "dark": "rgba(16,27,41,.97)",
+        "scopes": 0,
+        "declarations": 2
+      },
+      "--shadow": {
+        "category": "shadow",
+        "base": "0 20px 55px #102a4310",
+        "light": null,
+        "dark": "0 20px 55px #0002",
+        "scopes": 0,
+        "declarations": 2
+      }
+    },
+    "namesFor": {
+      "surface": [
+        "--bg"
+      ],
+      "accent": [
+        "--primary"
+      ],
+      "brandSurface": [
+        "--ink"
+      ]
+    },
+    "declaredUnseen": [
+      "--primary-hover",
+      "--accent"
+    ],
+    "notes": [],
+    "declaredColours": 20
+  },
+  "runtimeOnlyProperties": [],
+  "nodeCount": 284
+}
