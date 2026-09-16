@@ -109,6 +109,62 @@ function run(name, cmd, args, { note } = {}) {
   }
 }
 
+// 0. The brief. F14: the fastway run shipped five client logos as uppercase TEXT
+//    (`src/content/thermo.ts:196-201`, `logo: null`) because DESIGN.md has fifteen fields and not
+//    one of them obliges Phase 1 to ASK for the files the business already owns. The build the
+//    owner accepted put those three logos in its second section. Asking is now mechanical.
+//
+//    This is a PRESENCE check, not a taste check: each required row must name something that is on
+//    disk, or say UNAVAILABLE with the date it was asked for. "UNAVAILABLE — asked 2026-09-16" is a
+//    passing answer; silence is not. A brief that never mentions logos cannot be said to have
+//    considered them, and that is the only thing a script can decide here.
+{
+  const REQUIRED = ['logo', 'client-logos', 'photography']
+  let briefDir = resolve(target); let brief = null
+  for (let up = 0; up < 4 && !brief; up++, briefDir = dirname(briefDir)) {
+    const c = join(briefDir, 'DESIGN.md')
+    if (existsSync(c)) brief = c
+  }
+  if (!brief) {
+    if (!asJson) console.log(`\nbrief-assets — skipped: no DESIGN.md at or above ${target}. Phase 1 has not run, or this gate is pointed at a sub-tree.`)
+  } else {
+    const dir = dirname(brief)
+    const lines = readFileSync(brief, 'utf8').split('\n')
+    const start = lines.findIndex((l) => /^ASSETS:/.test(l))
+    const problems = []
+    if (start === -1) {
+      problems.push(`no ASSETS: block in ${relative(process.cwd(), brief)} — Phase 1 never asked what the business already owns`)
+    } else {
+      // The block is the ASSETS: line plus every indented continuation until the next FIELD: header,
+      // which is how every other block in this brief format is written.
+      const rows = new Map()
+      for (let i = start; i < lines.length; i++) {
+        const l = lines[i]
+        if (i > start && (/^[A-Z][A-Z0-9 _-]*:/.test(l) || l.trim() === '')) break
+        const body = i === start ? l.replace(/^ASSETS:\s*/, '') : l.trim()
+        const m = /^([a-z][a-z0-9-]*)\s*:\s*(.+)$/.exec(body.trim())
+        if (m) rows.set(m[1], m[2].trim())
+      }
+      for (const k of REQUIRED) {
+        const v = rows.get(k)
+        if (v === undefined) { problems.push(`ASSETS has no \`${k}\` row — say where it is, or say UNAVAILABLE and the date you asked`); continue }
+        if (/UNAVAILABLE/i.test(v)) {
+          if (!/\d{4}-\d{2}-\d{2}/.test(v)) problems.push(`\`${k}: ${v}\` — UNAVAILABLE needs the date it was asked for, e.g. "UNAVAILABLE — asked 2026-09-16"`)
+          continue
+        }
+        const first = v.split(/[,\s]+/)[0]
+        if (!existsSync(join(dir, first))) problems.push(`\`${k}: ${v}\` — ${first} is not on disk, relative to ${relative(process.cwd(), dir) || '.'}`)
+      }
+    }
+    if (!asJson) {
+      console.log(`\nbrief-assets — ${relative(process.cwd(), brief)}`)
+      if (!problems.length) console.log('  ✓ every required asset is on disk or honestly marked UNAVAILABLE with a date')
+      else for (const p of problems) console.log(`  ✗ ${p}`)
+    }
+    record('brief-assets', Math.min(problems.length, 63))
+  }
+}
+
 // 1. The source gate. It walks the tree itself; it gets the exclusion set as an expression so its
 //    file list and this one are the same list.
 run('anti-slop', 'bash', [join(HERE, 'anti-slop-gate.sh'), '--exclude', EXCLUDE_RE, target])

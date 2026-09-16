@@ -90,7 +90,12 @@ than a fabricated 6-of-6.
 licenses); write ONE binding Design Brief to **`DESIGN.md`** — named aesthetic, the six spectrum
 floats, all 15 fields of that file's template, the five dials (`DESIGN_VARIANCE`, `MOTION_INTENSITY`,
 `VISUAL_DENSITY`, `GRID_DISCIPLINE`, `TEXTURE_LEVEL`) later phases read and never re-derive. A value
-contradicting the brief is a defect, not a preference; a blank field is a blocked phase. **State the
+contradicting the brief is a defect, not a preference; a blank field is a blocked phase. **Write the
+`ASSETS:` block and ASK for what it names** — `logo`, `client-logos`, `photography`, `languages`.
+Each row is a path that exists, or `UNAVAILABLE — asked <YYYY-MM-DD>`; `gate.mjs`'s `brief-assets`
+child refuses the build otherwise, and it needs no `--url`. Silence is what this costs: the fastway
+run shipped five real clients as uppercase text (`content/thermo.ts:196`, `logo: null`) while the
+build the owner accepted put their three logos in its second section. **State the
 font choice out loud here**; if two brand moods conflict, force a priority, never average them into
 mush. `ultrathink` here. **Skip the brief only when** the work is backend with no surface · a minor
 tweak to an already token-driven screen · the user supplied mockups or a complete spec. A preset is a
@@ -294,11 +299,11 @@ returns 4 means four violations, never "Playwright is missing". They live in
 
 | Script | What it decides | 1–63 means |
 |---|---|---|
-| `gate.mjs` | Phase 4 — every source check below, over one file list | the **max** over its children, never the sum |
+| `gate.mjs` | Phase 4 — the brief's `ASSETS` block, then every source check below over one file list, then the rendered pair when `--url` is given | the **max** over its children, never the sum |
 | `recon.mjs` | Phase 0 fired, and its steal lines are filled | missing measurements + empty steals |
 | `import-gate.mjs` | Phase 3's COMPOSE fork — a pulled item builds against our deps, is reduced-motion gated, `aria-hidden` on cloned repeats | blockers in the pulled file |
 | `anti-slop-gate.sh` | 24 source rules read from `data/anti-slop-rules.json` | hard rules that fired (`note` rules print, never count) |
-| `design-audit.mjs` | rendered geometry + axe; caps calibrated between the gate-clean `examples/` and `scripts/fixtures/slopped-geometry.html`, never loosened to pass a screen | failed caps + serious/critical axe violations |
+| `design-audit.mjs` | rendered geometry + axe at 1440×900, then **document overflow at 390×844** — the failure Phase 5 calls critical, unchecked until 2026-09-16. Caps calibrated between the gate-clean `examples/` and `scripts/fixtures/slopped-geometry.html`, never loosened to pass a screen | failed caps + serious/critical axe violations |
 | `palette.mjs` | the OKLCH ramp, and a full AA census in both modes | failing fg/bg pairs + breached hard caps |
 | `validate-chart-palette.mjs` | chart-slot legality, including CVD simulation | failed checks, per mode |
 | `check-tw-merge-tokens.mjs` | `cn()` silently eating custom `--text-*` tokens | tokens `twMerge` will drop |

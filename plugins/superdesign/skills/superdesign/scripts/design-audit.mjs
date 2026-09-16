@@ -42,6 +42,12 @@ import { pathToFileURL } from 'node:url'
 
 const SCALE = [0, 1, 2, 4, 6, 8, 10, 12, 16, 24, 32, 48, 64, 96] // the declared ramp + the two nudge steps
 const VIEWPORT = { width: 1440, height: 900 }
+// The phone. SKILL.md Phase 5 calls horizontal overflow at 390px "a critical failure" by name and
+// nothing checked it until 2026-09-16 — this audit opened one viewport, the one above, and the
+// field run that exposed the hole had hand-written its own 289-line mobile gate on day one (F13).
+// ONLY the overflow probe runs here. The three caps above were calibrated at 1440x900, and a cap
+// carried to a viewport it was not calibrated on is a cap with no corpus behind it.
+const MOBILE = { width: 390, height: 844 }
 
 // CALIBRATED CAPS — set from the corpus in the header, not from taste. Each one is a metric where
 // the known-good pages and the slop fixture actually separate, with the cap placed in the gap.
@@ -338,6 +344,71 @@ for (const theme of themes) {
     for (const [tag, label, detail] of lines) console.log(`  [${tag}] ${String(label).padEnd(18)} ${detail}`)
     console.log(`  ── uncapped (measured not to separate good from slop — read them, don't gate on them)`)
     for (const [k, v] of reported) console.log(`     ${String(k).padEnd(15)} ${v}`)
+  }
+  await context.close()
+}
+
+
+// ── THE PHONE ─────────────────────────────────────────────────────────────────────────────────
+// CALIBRATED, 2026-09-16, light theme, 390x844, document-level horizontal overflow in px:
+//   good     0 — `meridian-editorial` · `cortex-landing` · `fieldnote-warm-paper` ·
+//                `pebble-playful`, plus BOTH fastway builds, the one the owner rejected and
+//                the one he accepted. Six pages, every one of them exactly 0.
+//   slop    12 — `scripts/fixtures/slopped-geometry.html`, the same negative control the three
+//                caps above are calibrated against. It fails this one too.
+//   control 402 — `scripts/fixtures/overflow-390/overflows.html`, added with this check: a
+//                three-column grid at `min-width: 768px` with no mobile rule, which is the
+//                common cause and a failure large enough that a regression cannot hide in noise.
+// Good and slop separate cleanly at 0 vs 12, so cap 0 is doctrinal AND measured — the same
+// justification `offGrid` carries. `scripts/fixtures/overflow-390/verify.sh` must stay green and
+// the slop fixture must keep failing this check; re-run both before touching anything here.
+//
+// The per-element offender count is NOT capped and will not be on this evidence: `pebble-playful`
+// scores 12 and `cortex-landing` 1, both gate-clean, because a decorative `absolute -inset-12` its
+// parent clips is a legitimate technique. The selectors are printed; the count is not a verdict.
+{
+  const context = await browser.newContext({ viewport: MOBILE, reducedMotion: 'no-preference' })
+  const page = await context.newPage()
+  let reached = true
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
+  } catch {
+    try { await page.goto(url, { waitUntil: 'load', timeout: 30_000 }) } catch { reached = false }
+  }
+  if (!reached) {
+    // The desktop pass already reached this URL, so this is flake, not a dead target. Say so, and
+    // do NOT count it — a harness problem must never read as a design defect.
+    report.mobile = { viewport: `${MOBILE.width}x${MOBILE.height}`, reached: false }
+    if (!asJson) console.log(`\n  [note ] ${'mobileOverflow'.padEnd(18)} could not re-open ${url} at ${MOBILE.width}px — NOT counted`)
+  } else {
+    await page.waitForTimeout(600)
+    const mob = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth
+      const over = []
+      for (const e of document.querySelectorAll('body *')) {
+        const b = e.getBoundingClientRect()
+        if (b.width === 0 || b.height === 0) continue
+        const right = b.right + window.scrollX
+        if (right > vw + 1) {
+          const cls = (e.getAttribute('class') || '').trim()
+          over.push({ sel: e.tagName.toLowerCase() + (cls ? '.' + cls.split(/\s+/).slice(0, 3).join('.') : ''), px: Math.round(right - vw) })
+        }
+      }
+      const seen = new Set(); const uniq = []
+      for (const o of over.sort((a, b) => b.px - a.px)) { if (seen.has(o.sel)) continue; seen.add(o.sel); uniq.push(o) }
+      return { docOverflow: document.documentElement.scrollWidth - vw, offenders: over.length, worst: uniq.slice(0, 6) }
+    })
+    report.mobile = { viewport: `${MOBILE.width}x${MOBILE.height}`, reached: true, ...mob }
+    const bad = mob.docOverflow > 0
+    if (bad) failures++
+    if (!asJson) {
+      console.log(`\ndesign-audit — light @ ${MOBILE.width}x${MOBILE.height} · ${url} · the phone, overflow only`)
+      console.log(`  [${bad ? 'FAIL' : 'PASS'}] ${'mobileOverflow'.padEnd(18)} ${mob.docOverflow}px of document scroll (cap 0 — six known-good pages score 0, the slop fixture 12, the control 402)`)
+      if (bad) for (const o of mob.worst) console.log(`         +${String(o.px).padStart(4)}px  ${o.sel}`)
+      console.log('  ── uncapped')
+      console.log(`     ${'offenders'.padEnd(15)} ${mob.offenders} element(s) past the right edge — good pages score 0–12 (pebble 12, cortex 1); read the selectors, do not gate on the count.`)
+      if (!bad) for (const o of mob.worst) console.log(`     ${''.padEnd(15)} +${String(o.px).padStart(4)}px  ${o.sel}`)
+    }
   }
   await context.close()
 }
