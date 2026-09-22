@@ -46,6 +46,14 @@ mkdir -p /tmp/critic-one && cp "$HERE/rubric-accepted/run-1.json" /tmp/critic-on
 node "$C" --rubric /tmp/critic-one >/tmp/critic-one.txt 2>&1
 [ $? -eq 67 ] && echo "PASS  one run is refused as a verdict (exit 67)" || { echo "FAIL  a single run was accepted as a verdict"; fail=$((fail+1)); }
 
+# Three copies of one blind run are one blind run. A verifier defeated the floor this way on
+# 2026-09-22: the median of three identical values is that value, which is exactly the single-run
+# spread the floor exists to average away.
+rm -rf /tmp/critic-dup && mkdir -p /tmp/critic-dup
+for i in 1 2 3; do cp "$HERE/rubric-accepted/run-1.json" "/tmp/critic-dup/run-$i.json"; done
+node "$C" --rubric /tmp/critic-dup >/tmp/critic-dup.txt 2>&1
+[ $? -eq 67 ] && echo "PASS  three copies of one run are refused (exit 67)" || { echo "FAIL  three identical files passed as three blind runs"; sed 's/^/        /' /tmp/critic-dup.txt | head -4; fail=$((fail+1)); }
+
 # Two images, never a gallery.
 node "$C" --prompts --ours "$HERE/agree-win/manifest.json" --against "$HERE/agree-win/manifest.json" --out /tmp/critic-prompts >/dev/null 2>&1
 [ $? -eq 67 ] && echo "PASS  --prompts refuses a path that is not an image on disk" || { echo "FAIL  --prompts accepted a non-image"; fail=$((fail+1)); }

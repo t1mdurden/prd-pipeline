@@ -299,7 +299,19 @@ function spectrum(ds) {
 // einride at 262 nodes and the next is thermoking at 352; the captcha is 37. 120 sits in the gap
 // with better than 2× headroom under the smallest real site.
 const WALL_NODES = 120
-const WALL_TITLE = /captcha|are you (a )?human|just a moment|attention required|access denied|checking your browser|verify you are|403 forbidden|404|not found|page unavailable|enable javascript/i
+// Widened 2026-09-22 after a verifier ran it against fourteen real interstitial titles and it
+// caught exactly one — the page that caused the finding. The node floor is the real guard and this
+// is a thin second layer, but a second layer that catches 1 of 14 is decoration. Each alternative
+// below is a title a verifier or a live measurement actually produced.
+const WALL_TITLE = new RegExp([
+  'captcha', 'bot verification', 'human verification', 'security check', 'are you (a )?human',
+  'just a moment', 'attention required', 'pardon our interruption', 'checking your browser',
+  'verify (you|that you)', 'one more step', 'please wait', 'ddos protection', 'cloudflare',
+  'access (to this page )?(has been )?denied', 'access denied', 'error 10\\d\\d',
+  '403 forbidden', '404', 'not found', 'page unavailable', 'temporarily unavailable',
+  'enable javascript', 'javascript is (required|disabled)', 'request blocked', 'blocked',
+  'идёт проверка', 'проверка безопасности', 'подождите',
+].join('|'), 'i')
 
 function wallReason(report) {
   const n = report.nodeCount ?? 0

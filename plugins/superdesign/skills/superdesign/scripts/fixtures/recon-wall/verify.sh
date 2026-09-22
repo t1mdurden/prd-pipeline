@@ -36,5 +36,25 @@ grep -q 'ref-a' /tmp/recon-wall-wall.txt \
   && echo "PASS  the two real references still report [ok] beside the bad one" \
   || { echo "FAIL  one bad card suppressed the good ones"; fail=$((fail+1)); }
 
+# The title pattern is the thin second layer under the node floor, and the first version of it
+# caught 1 of the 14 real interstitial titles a verifier threw at it — the one page that caused the
+# finding. Widened, it must catch all fourteen and fire on none of the seven real peer titles on
+# disk, or it is trading a hole for a worse one.
+node -e '
+const fs=require("fs");
+const titles=["Radware Captcha Page","Security Check - Please Wait","Bot Verification","Cloudflare","DDoS protection by Cloudflare","Pardon Our Interruption","Error 1015","Access to this page has been denied","Human Verification Required","Подождите, идёт проверка","Just a moment...","Attention Required! | Cloudflare","Checking your browser before accessing","One more step"];
+const good=["Global Transport and Logistics | DSV","Maersk | Integrated Container Logistics","Home - Nagel-Group","Thermo King | North America","Europes Largest Asset-Based Logistics Company","Decision Intelligence Platform | project44","Digital Freight Forwarder | sennder"];
+const src=fs.readFileSync(process.argv[1],"utf8");
+const m=/const WALL_TITLE = new RegExp\(\[([\s\S]*?)\]\.join\(.\|.\), .i.\)/.exec(src);
+if(!m){console.log("SHAPE");process.exit(2)}
+const re=new RegExp(eval("["+m[1]+"]").join("|"),"i");
+const caught=titles.filter(t=>re.test(t)).length;
+const fp=good.filter(t=>re.test(t));
+console.log(caught+"/"+titles.length+" "+fp.length);
+' "$HERE/../../recon.mjs" > /tmp/recon-title.txt 2>&1
+read -r res fp < /tmp/recon-title.txt
+if [ "$res" = "14/14" ] && [ "${fp:-9}" = "0" ]; then echo "PASS  the title pattern catches 14/14 interstitials and 0/7 real peer titles"
+else echo "FAIL  title pattern: $res caught, $fp false positive(s) — see /tmp/recon-title.txt"; fail=$((fail+1)); fi
+
 [ "$fail" -eq 0 ] && echo "✓ a reference the browser never reached is not a measurement" || echo "✗ $fail checks failed"
 exit "$fail"

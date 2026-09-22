@@ -16,6 +16,7 @@
 #   declared-and-missing/  CONVERSION: form  + a WhatsApp link → exit 1   ← the fastway defect
 #   declared-call/         CONVERSION: call  + a WhatsApp link → exit 0   ← a legitimate answer
 #   undeclared/            no CONVERSION: row at all           → exit 1
+#   evade-{comment,string,css}/  a `<form` that is not a form  → exit 1
 #
 # Every fixture is otherwise gate-clean — seed, ASSETS block, reduced-motion reset — so the
 # dispatcher's exit IS this child's count.
@@ -32,6 +33,17 @@ check declared-and-built   0
 check declared-and-missing 1
 check declared-call        0
 check undeclared           1
+
+# The three evasions a verifier reproduced on 2026-09-22 against the first version of this child,
+# which matched a bare /<(form|input|select|textarea)\b/ over every file in SOURCE_EXT:
+#   a `<form` inside a `// TODO` comment      → passed
+#   a `<form` inside a string literal         → passed
+#   a `<form` inside a CSS comment            → passed, and `.css` cannot hold a JSX control at all
+# Now: markup files only, comments and string literals stripped first, and the tag has to look
+# like a tag rather than like the word.
+check evade-comment        1
+check evade-string         1
+check evade-css            1
 
 grep -q 'no form control' /tmp/cv-declared-and-missing.txt \
   && echo "PASS  the failure names the gap between the brief and the tree" \

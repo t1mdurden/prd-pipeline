@@ -56,6 +56,7 @@
 // "Use the same critic prompt each time" — a prompt retyped per iteration is a prompt that drifts,
 // and then the score moves for reasons that are not the design.
 
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 
@@ -256,6 +257,18 @@ if (has('rubric')) {
   // points on each side of the labelled pair (16/17/18 and 13/14/14). A single draw of 14 could
   // have been a 16; the median of three could not.
   if (runs.length < 3) { console.error(`✗ ${runs.length} run(s) in ${dir}. The floor is a median and needs at least 3 — a single blind run spreads ±2 on this rubric.`); process.exit(67) }
+  // ...and three COPIES of one run are one run. A verifier defeated the floor on 2026-09-22 by
+  // copying one verdict three times: the median of three identical values is that value, so the
+  // spread the floor exists to average over is exactly what the copy removes. Count distinct
+  // content, not files.
+  const seen = new Map()
+  for (const r of runs) seen.set(createHash('sha256').update(JSON.stringify(r.j.criteria)).digest('hex'), (seen.get(createHash('sha256').update(JSON.stringify(r.j.criteria)).digest('hex')) || 0) + 1)
+  if (seen.size < 3) {
+    console.error(`✗ ${runs.length} file(s) in ${dir} but only ${seen.size} distinct verdict(s). Three copies of one blind run are one blind run —`)
+    console.error('  the median of three identical values is that value, which is the single-run spread the floor exists to average away.')
+    console.error('  Dispatch three SEPARATE subagents, each in its own fresh context.')
+    process.exit(67)
+  }
 
   const held = runs.map((r) => r.j.criteria.filter((c) => c.holds).length).sort((a, b) => a - b)
   const median = held[Math.floor(held.length / 2)]

@@ -213,8 +213,20 @@ if (BRIEF) {
     }
     record('brief-conversion', 1)
   } else if (m[1].toLowerCase() === 'form') {
-    const CONTROL = /<(form|input|select|textarea)\b/i
-    const hits = files.filter((f) => CONTROL.test(readFileSync(f, 'utf8')))
+    // A verifier defeated the first version of this on 2026-09-22 three ways, all reproduced: a
+    // `<form` inside a `// TODO` comment, inside a string literal, and inside a CSS comment — the
+    // last because `.css` is in SOURCE_EXT and a stylesheet cannot contain a JSX control at all.
+    // So: markup files only, comments and string literals removed first, and the tag has to look
+    // like a tag rather than like the word.
+    const CONTROL = /<(form|input|select|textarea)(\s|\/?>)/i
+    const strip = (src) => src
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')            // block comments
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')          // line comments, sparing `https://`
+      .replace(/'(?:\\.|[^'\\])*'/g, "''")            // single-quoted strings
+      .replace(/"(?:\\.|[^"\\])*"/g, '""')            // double-quoted strings
+      .replace(/`(?:\\.|[^`\\])*`/g, '``')            // template literals
+    const MARKUP = /\.(tsx|jsx|ts|js)$/i
+    const hits = files.filter((f) => MARKUP.test(f) && CONTROL.test(strip(readFileSync(f, 'utf8'))))
     if (!asJson) {
       console.log(`\nbrief-conversion — ${relative(process.cwd(), BRIEF)} declares CONVERSION: form`)
       if (hits.length) console.log(`  ✓ ${hits.length} file(s) carry a form control`)
