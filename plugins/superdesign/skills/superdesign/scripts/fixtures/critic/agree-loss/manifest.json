@@ -1,0 +1,14 @@
+{
+  "ours": "/fixture/ours.png",
+  "reference": "/fixture/reference.png",
+  "orders": {
+    "ab": {
+      "A": "/fixture/reference.png",
+      "B": "/fixture/ours.png"
+    },
+    "ba": {
+      "A": "/fixture/ours.png",
+      "B": "/fixture/reference.png"
+    }
+  }
+}

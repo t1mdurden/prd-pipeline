@@ -1,0 +1,25 @@
+{
+  "winner": "A",
+  "margin": "clear",
+  "why": "A varies the shape of every section - a photographic hero with a captioned overlay, a real client-logo row, a working quote form, a bespoke drawn route map, one dark full-bleed band, an accordion - while B runs the same two modules (a four-card grid and a numbered list of rows) around six times under alternating blue and white bands. A's hierarchy survives desaturation because it is built from scale and value contrast: the hero type is far larger than the body, the dark step band changes the page's weight, the photos anchor two sections; in B the only thing separating a heading from its body copy is a small size step, so each band reads as one flat slab and the structure is carried entirely by the band colour. A's imagery is specific and owned - a branded trailer, the actual Danone, Shin-Line and Hamle marks - where B's trust row is the client names typeset inside empty outlined boxes, which reads as a logo wall nobody ever supplied logos for.",
+  "loser_fatal_flaw": "Hierarchy is colour-only. Strip the blue bands and B collapses into an undifferentiated column of small text - headings, labels, list rows and body all sit at nearly the same weight and size, so nothing tells the eye where a section starts or what matters inside it.",
+  "winner_worst_flaw": "The hero stacks two competing headlines - a question and a claim - in two different colours, so the page opens without a single sentence in charge, and the pale-blue-on-white upper third gives that spread almost no value contrast to sit against.",
+  "which_reads_more_ai_generated": "B",
+  "ai_evidence": [
+    "Sequential 01-07 chips marking every section, the signature of a generated section inventory rather than an argued page",
+    "Client names set as plain text inside empty outlined boxes where real logos belong",
+    "The same four-card grid reused for what we take on, our fleet and why choose us, with only the labels changed",
+    "Numbered five-to-six-row lists used for services, geography and process alike, so three unrelated ideas get one form",
+    "A complete section-title checklist - services, geography, trust, why us, how we work, contact - covering every generic B2B heading in order",
+    "The footer restates the entire top navigation and both CTA buttons verbatim",
+    "Two truck photographs from visibly different fleets and cropped to different logics, placed as decoration rather than evidence"
+  ],
+  "repeats_itself": {
+    "A": false,
+    "B": true
+  },
+  "real_imagery": {
+    "A": true,
+    "B": true
+  }
+}

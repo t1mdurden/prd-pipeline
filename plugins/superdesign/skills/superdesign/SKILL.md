@@ -51,6 +51,7 @@ be written** — that probe is how "tokens before markup" is enforced now. If it
 | **3b POLISH** | markup exists, past one component | ✓ | ✓ | ✓ |
 | **4 GATE** | markup exists | ✓ | ✓ | ✓ |
 | **5 RANK** | the build renders | ✓ | ✓ (the point) | ✓ |
+| **5b CRITIC** | a screenshot exists | ✓ | ✓ | ✓ |
 
 **Two forks total, both explicit: Phase 0's three modes, and `import-gate.mjs` in Phase 3.** Every
 phase fires on a file, so every file has one path, one writer, one reader:
@@ -85,15 +86,35 @@ offline escape — the target *is* the input and a redesign from memory is recal
 browser hand-writes `recon.json` flagged `measured:false`, so Phase 5 reports "no reference" rather
 than a fabricated 6-of-6.
 
-**1 DIRECTION — fires when `recon.json` exists.** The one judgement phase. Read
-`references/brand-to-system.md` (and `references/reference-mining.md` for what a measured product
-licenses); write ONE binding Design Brief to **`DESIGN.md`** — named aesthetic, the six spectrum
-floats, all 15 fields of that file's template, the five dials (`DESIGN_VARIANCE`, `MOTION_INTENSITY`,
-`VISUAL_DENSITY`, `GRID_DISCIPLINE`, `TEXTURE_LEVEL`) later phases read and never re-derive. A value
+**1 DIRECTION — fires when `recon.json` exists.** The one judgement phase. **Draw the seed first,
+before you have an opinion** — the draw is worth nothing after you have already decided:
+```bash
+node .claude/skills/superdesign/scripts/seed.mjs --new --register conservative   # or neutral | expressive
+node .claude/skills/superdesign/scripts/seed.mjs --check DESIGN.md [--against <last project's DESIGN.md>]
+```
+`--new` prints a `SEED:` / `SEED-REGISTER:` / `SEED-DERIVED:` block; paste it into `DESIGN.md` whole
+and **design inside it**. REGISTER is the one judgement the draw does not make: `conservative` for a
+buyer who reads novelty as risk, `expressive` where the brand can carry a movement the table marks
+unverified. The block is also where `SECTION_RHYTHM` comes from — five to eight *distinct* section
+shapes, drawn up front, because the build the owner rejected shipped one shape repeated eight times
+and the one he accepted has eight. `gate.mjs` runs `--check`: a brief that prints a seed and then
+chooses freely exits with one violation per contradicted axis.
+Then read `references/brand-to-system.md` (and `references/reference-mining.md` for what a measured
+product licenses); write ONE binding Design Brief to **`DESIGN.md`** — named aesthetic, the six
+spectrum floats, all 15 fields of that file's template, the five dials (`DESIGN_VARIANCE`,
+`MOTION_INTENSITY`, `VISUAL_DENSITY`, `GRID_DISCIPLINE`, `TEXTURE_LEVEL`) later phases read and never
+re-derive. A value
 contradicting the brief is a defect, not a preference; a blank field is a blocked phase. **Write the
 `ASSETS:` block and ASK for what it names** — `logo`, `client-logos`, `photography`, `languages`.
 Each row is a path that exists, or `UNAVAILABLE — asked <YYYY-MM-DD>`; `gate.mjs`'s `brief-assets`
-child refuses the build otherwise, and it needs no `--url`. Silence is what this costs: the fastway
+child refuses the build otherwise, and it needs no `--url`. **Write the `CONVERSION:` row in the
+same breath** — one of `form` · `call` · `link` · `none`, with the reason on the same line. It is
+not a blanket rule that every page carries a form; four of the five pages in `examples/` carry none
+and are not wrong to. It is that a page which converts through a form must contain one: the fastway
+build declared itself a lead-generation landing page and shipped `grep -c '<form\|<input' Landing.tsx`
+= 0 while `references/cookbook/forms.md` sat unread, and a blind critic scoring both builds three times each
+found "there is at least one thing the visitor can fill in" one of only three criteria of twenty
+that separated them 3/3 against 0/3. Silence is what this costs: the fastway
 run shipped five real clients as uppercase text (`content/thermo.ts:196`, `logo: null`) while the
 build the owner accepted put their three logos in its second section. **State the
 font choice out loud here**; if two brand moods conflict, force a priority, never average them into
@@ -233,6 +254,31 @@ Console errors and a failing Lighthouse accessibility score both block done. **R
 signal, then stop** — fix every P0/P1, re-run, exit 0 or stop and report; every extra loop must
 introduce a signal the last lacked, and by pass 3 model critique is measurably worse than the design.
 
+**5b BLIND CRITIC — the one signal you cannot produce by looking at your own work.** You wrote this
+page; you cannot see it. Dispatch a critic that gets the PNG and nothing else — no source tree, no
+`DESIGN.md`, no earlier critique — and let it decide.
+```bash
+node .claude/skills/superdesign/scripts/critic.mjs --prompts --ours <ours.png> --against <reference.png> --out ref/critic
+#   dispatch prompt-ab.txt and prompt-ba.txt as TWO separate subagents, each in a fresh context
+node .claude/skills/superdesign/scripts/critic.mjs --verdict ref/critic
+node .claude/skills/superdesign/scripts/critic.mjs --rubric-prompt --image <ours.png> --out ref/rubric/run-1.json
+#   dispatch that prompt THREE times, three separate subagents, same prompt, three files
+node .claude/skills/superdesign/scripts/critic.mjs --rubric ref/rubric
+```
+The reference is the best of the Phase-0 refs, treated as a baseline to clear rather than a thing to
+copy. **Four rules the script enforces rather than asks for:** the critic sees pixels only, so a
+non-image path exits 67 · the pair runs in BOTH orders and a verdict that flips with the order is
+discarded, never averaged · exactly two images, because a judge shown seven answered by position
+alone (arXiv 2606.20364) · no pixel claims, because four SOTA VLMs average 58.07% on shape-position
+tasks (arXiv 2407.06581) — `design-audit.mjs` owns geometry and `--verdict` greps the returned
+findings for `px` values and tells you to ignore them.
+**It is not a score out of ten, and that is a measurement, not a preference.** On 2026-09-22 the
+same model judged the owner-labelled fastway pair three ways: an absolute /10 ranked the build he
+threw away *above* the one he shipped (6 against 4–5); forced-choice pairwise picked the accepted
+build 4 of 4 across both orders; twenty binary criteria scored accepted 16/17/18 against rejected
+13/14/14, no overlap. `--rubric` takes the median of at least three runs against a floor of 15, and
+refuses to call one run a verdict — a single blind run spreads ±2.
+
 ## The MUSTs
 
 Each carries its failure mode — a rule whose cost is unstated is a rule that gets skipped.
@@ -241,11 +287,20 @@ Each carries its failure mode — a rule whose cost is unstated is a rule that g
    "neobrutalist terminal"). *Fails as:* a weak brand vector defaults to SaaS-minimal, the exact
    statistical centre this skill exists to defeat. "Clean and modern" is an adjective, not a direction;
    it fails silently and looks like compliance. No script can decide whether a phrase is an aesthetic.
-2. **Take the least-probable direction that still clears the brief. Never average three candidates** —
-   which must differ on ALL of MOVEMENT, accent hue family, radius base and grid discipline, or "least
-   probable of three" is unfalsifiable. *Fails as:* the mean of the training distribution, arrived at
-   by a procedure that looks like diversity. Unmeasurable — the probability here is the model's own
-   estimate of its own prior.
+2. **Draw the direction from outside the model, then take the least-probable one the seed and the
+   register allow. Never average three candidates** — which must differ on ALL of MOVEMENT, accent
+   hue family, radius base and grid discipline, or "least probable of three" is unfalsifiable.
+   *Fails as:* the mean of the training distribution, arrived at by a procedure that looks like
+   diversity. **This half now has an exit code.** `seed.mjs --new` draws 32 bytes from the OS and
+   derives every axis of `brand-to-system.md` § "The seed axis" by rolling hash; `--check` re-derives
+   them from the brief's own seed and counts the axes the brief contradicts, and `gate.mjs` runs it.
+   Asking the model to roll the dice does not work and is measured not working: "LLMs Are Bad Dice
+   Players" (arXiv 2601.05414) puts 11 frontier models at a 7% median pass rate across 15
+   distributions, 10 of 11 failing every one under independent requests. What is still yours to judge
+   is *least probable within the register* — the register is declared, not derived, because the
+   fastway post-mortem recorded the case against blanket novelty: for a mid-market Kazakh reefer
+   operator the buyer-correct direction is the most probable one, and nothing used to let a build
+   say so.
 3. **Carry hierarchy with weight and gray level before size or colour; the screen must read in
    grayscale.** *Fails as:* colour-carried hierarchy that passes every contrast gate and still reads
    flat. A VLM judge may not assert spacing, alignment or size ratios — four SOTA VLMs average 58% on
@@ -300,6 +355,8 @@ returns 4 means four violations, never "Playwright is missing". They live in
 | Script | What it decides | 1–63 means |
 |---|---|---|
 | `gate.mjs` | Phase 4 — the brief's `ASSETS` block, then every source check below over one file list, then the rendered pair when `--url` is given | the **max** over its children, never the sum |
+| `seed.mjs` | Phase 1 — the direction was drawn from OS entropy, and the brief still follows it | axes of the brief that contradict its own seed |
+| `critic.mjs` | Phase 5b — the blind pairwise verdict and the twenty-criterion rubric, as a protocol rather than a score | 1 when the reference wins both orders, or the rubric median is under the floor |
 | `recon.mjs` | Phase 0 fired, and its steal lines are filled | missing measurements + empty steals |
 | `import-gate.mjs` | Phase 3's COMPOSE fork — a pulled item builds against our deps, is reduced-motion gated, `aria-hidden` on cloned repeats | blockers in the pulled file |
 | `anti-slop-gate.sh` | 24 source rules read from `data/anti-slop-rules.json` | hard rules that fired (`note` rules print, never count) |

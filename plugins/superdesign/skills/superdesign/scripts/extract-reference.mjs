@@ -40,7 +40,7 @@
 
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
-import { delimiter, dirname, join } from 'node:path'
+import { delimiter, dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const argv = process.argv.slice(2)
@@ -188,6 +188,27 @@ function groundTintGate(oursPath) {
  */
 async function differentiationGate(refPath, oursPath) {
   if (!refPath || !oursPath) { console.error(USAGE); process.exit(64) } // 64 = usage
+  // A hue the BUSINESS owns is not a design choice, so it cannot be a differentiation axis.
+  // Found on the 2026-09-22 field run, where two of this package's own mechanisms contradicted
+  // each other by construction: `seed.mjs --brand-hue` pins the accent to the logo the company
+  // already has, and this gate then calls the result "the clone tell" because the category's
+  // references share that hue. A brand-fixed build cannot satisfy both and should not have to.
+  // The fastway post-mortem had already recorded the same shape as unproven-but-not-disproven:
+  // "the gate points away from the register the buyer reads as trust."
+  // So: a brief that declares SEED-BRAND-HUE gets the hue axis REPORTED and not counted, and the
+  // other five still have to move. It is a declaration, in a file, that a reader can check — not
+  // a flag the gate hands out on request.
+  const briefHue = (() => {
+    let d = dirname(resolve(oursPath))
+    for (let up = 0; up < 4; up++, d = dirname(d)) {
+      const f = join(d, 'DESIGN.md')
+      if (existsSync(f)) {
+        const m = /^\s*SEED-BRAND-HUE:\s*(\d+(?:\.\d+)?)\s*$/m.exec(readFileSync(f, 'utf8'))
+        return m ? { deg: +m[1], file: f } : null
+      }
+    }
+    return null
+  })()
   let R, O
   try { R = JSON.parse(readFileSync(refPath, 'utf8')); O = JSON.parse(readFileSync(oursPath, 'utf8')) } catch (e) {
     console.error(`✗ ${e.message.split('\n')[0]}`)
@@ -212,9 +233,13 @@ async function differentiationGate(refPath, oursPath) {
       (R.motion.easings?.[0]?.[0] || '') !== (O.motion.easings?.[0]?.[0] || ''),
       `${R.motion.medianUiMs ?? '—'}ms → ${O.motion.medianUiMs ?? '—'}ms`],
   ]
-  const moved = axes.filter(([, d]) => d).length
+  const counted = axes.filter(([name]) => !(briefHue && name === 'accent hue'))
+  const moved = counted.filter(([, d]) => d).length
   console.log(`differentiation — ${R.title || refPath}  vs  ${O.title || oursPath}\n`)
-  for (const [name, differs, detail] of axes) console.log(`  [${differs ? 'MOVED' : 'SAME '}] ${name.padEnd(15)} ${detail}`)
+  for (const [name, differs, detail] of axes) {
+    const exempt = briefHue && name === 'accent hue'
+    console.log(`  [${exempt ? 'BRAND' : differs ? 'MOVED' : 'SAME '}] ${name.padEnd(15)} ${detail}${exempt ? `  — brand-fixed at ${briefHue.deg}° by ${relative(process.cwd(), briefHue.file)}; reported, not counted` : ''}`)
+  }
 
 
   // SYSTEM MATURITY — not a seventh mechanic and deliberately not part of the exit code. The six
@@ -240,9 +265,13 @@ async function differentiationGate(refPath, oursPath) {
   }
 
   let failures = 0
-  if (moved < 3) { failures += 3 - moved; console.log(`\n✗ only ${moved} of 6 mechanics moved — 3 is the floor`) }
-  if (dH < 10) { failures++; console.log(`✗ accent hue is within ${dH.toFixed(0)}° of the reference — that is the clone tell, move it`) }
-  console.log(failures === 0 ? `\n✓ differentiated: ${moved}/6 mechanics moved, accent Δ${dH.toFixed(0)}°` : '')
+  const floor = briefHue ? 3 : 3
+  const total = counted.length
+  if (moved < floor) { failures += floor - moved; console.log(`\n✗ only ${moved} of ${total} counted mechanics moved — ${floor} is the floor`) }
+  if (!briefHue && dH < 10) { failures++; console.log(`✗ accent hue is within ${dH.toFixed(0)}° of the reference — that is the clone tell, move it`) }
+  console.log(failures === 0
+    ? `\n✓ differentiated: ${moved}/${total} mechanics moved${briefHue ? `, hue brand-fixed at ${briefHue.deg}° and excluded` : `, accent Δ${dH.toFixed(0)}°`}`
+    : '')
   // Contract: 1–63 is the violation count. This one maxes out at 4, but clamp for uniformity.
   if (failures > 63) console.log(`  (exit code clamped to 63; ${failures} failure(s) found)`)
   process.exit(Math.min(failures, 63))

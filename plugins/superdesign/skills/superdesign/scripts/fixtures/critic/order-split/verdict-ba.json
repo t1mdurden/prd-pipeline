@@ -1,0 +1,25 @@
+{
+  "winner": "A",
+  "margin": "clear",
+  "why": "A runs one editorial system end to end — numbered section markers (01-08) in a mono face, alternating pale and blue bands, a single left-aligned type scale — and its copy names things only an operator knows (TR TS 021/2011, ATP body classes, FRC for frozen, thermograph readings, veterinary and phytosanitary control at the border), so the page argues rather than advertises. B's first screen is broken: the Russian/Kazakh/English switcher sits on top of the hero headline and swallows the first line, which is the one piece of text everything else depends on. B then repeats the same primary CTA twice within a screen, uses the identical snowflake icon for both 'Chilled products' and 'Frozen cargo', and fills six route cards with the same shell and a large pocket of dead space where content should be.",
+  "loser_fatal_flaw": "The language switcher overlaps and occludes the hero headline, so the page's opening sentence is unreadable at the very top of the page.",
+  "winner_worst_flaw": "Its social proof is fake: the client 'logos' are just company names typeset in the page's own font inside plain boxes, with the fifth one orphaned and centred under a two-column grid — a wall of placeholders standing in for evidence on a page whose whole argument is evidence.",
+  "which_reads_more_ai_generated": "B",
+  "ai_evidence": [
+    "Headline built as a two-fragment couplet, 'Your route. Our solution.', with the second line recoloured — the standard generated-landing device",
+    "Copy that says nothing checkable: 'Tell us what you are shipping and we will discuss a suitable option', 'We match the refrigerated truck to your product'",
+    "The same snowflake glyph used for two different cargo categories, each in the identical rounded tinted icon square",
+    "Six route cards that are one card repeated, with a large empty gap between the route name and the link because every card is padded to a fixed shell",
+    "Route labels that overlap in meaning rather than partition the map: Kazakhstan-Europe, Europe-CIS, CIS countries-Kazakhstan",
+    "The canonical three-question FAQ (what does it cost / can you do it urgently / how is it monitored) with every answer collapsed",
+    "A visible 'Skip to content' box rendered at the top of the capture"
+  ],
+  "repeats_itself": {
+    "A": true,
+    "B": true
+  },
+  "real_imagery": {
+    "A": true,
+    "B": true
+  }
+}

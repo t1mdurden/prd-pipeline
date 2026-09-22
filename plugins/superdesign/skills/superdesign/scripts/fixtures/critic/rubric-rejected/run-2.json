@@ -1,0 +1,37 @@
+{
+  "criteria": [
+    {"n": 1, "holds": true, "evidence": "A stranger could call it a freight dossier laid on a Swiss grid: monospace numerals (01-08 tabs, 01-05 row numbers, the phone set in mono), hairline rules instead of boxes, faint vertical grid lines showing through the hero."},
+    {"n": 2, "holds": true, "evidence": "The hero headline is near-black and very heavy against mid-gray body copy, section headings sit a clear step below it, and row numbers are the palest thing in each list; colour carries none of that."},
+    {"n": 3, "holds": false, "evidence": "The same left-aligned heading plus hairline-ruled numbered rows runs in Услуги, География and Как мы работаем, and a row of identical bordered boxes runs in section 01, in Свои рефрижераторы and again in Нам доверяют; the page cycles two shapes."},
+    {"n": 4, "holds": true, "evidence": "The hero is an asymmetric split — left column of eyebrow, headline, paragraph and a two-by-two ruled fact table, with a photograph of the company's own refrigerated trailer filling the right, and a numbered tab hanging off the bottom-left seam."},
+    {"n": 5, "holds": true, "evidence": "Two real photographs of trucks carrying the FWL livery (Volvo tractor in the hero, Scania in the services split), shot on real road and yard backgrounds."},
+    {"n": 6, "holds": false, "evidence": "Нам доверяют renders DANONE, HAMLE, ШИНЛАЙН, AMERICANO and SAMAL as uppercase letter-spaced text inside five identical bordered rectangles — no logo image anywhere."},
+    {"n": 7, "holds": false, "evidence": "The only control on the page is the sun/theme toggle in the header; Связаться offers a phone number and the WhatsApp and Позвонить buttons, with no field, no route or cargo selector, nothing to fill in."},
+    {"n": 8, "holds": true, "evidence": "The hero headline is set several steps larger and heavier than anything else on the page, and the eyebrow СНГ · ЕВРОПА and the 01-08 tabs are genuinely tiny, tracked-out mono."},
+    {"n": 9, "holds": true, "evidence": "Everything is in a single blue family from pale ground to deep navy; no purple, no violet, and no gradient wash anywhere."},
+    {"n": 10, "holds": true, "evidence": "No blobs, glows or abstract 3D — the only imagery is the two truck photographs."},
+    {"n": 11, "holds": true, "evidence": "No emoji anywhere; the icons are line glyphs — a speech bubble on the WhatsApp button, a handset on Позвонить, a sun in the header toggle."},
+    {"n": 12, "holds": false, "evidence": "The deep navy is confined to two buttons and the section tabs, but every single section ground is a tint of the same blue (two alternating pale blues) — there is no neutral band anywhere, so the brand hue does tint whole sections."},
+    {"n": 13, "holds": true, "evidence": "The grounds alternate between exactly two values across all eight sections in a consistent rhythm, with the numbered tab straddling each seam — a decision, not a per-section tint."},
+    {"n": 14, "holds": true, "evidence": "Besides the bordered-box rows the page uses hairline-ruled numbered lists, a two-column route table with arrows, a split image/list block and a ruled three-column reasons grid."},
+    {"n": 15, "holds": true, "evidence": "Copy names ТР ТС 021/2011, ATP-сертификат, FRC class, термограф readings, concrete route pairs (Казахстан → Россия, Европа → СНГ, Внутри Казахстана) and the phone +7 708 180 5200."},
+    {"n": 16, "holds": true, "evidence": "No lorem, no counter strip, no invented percentages — the page makes no numeric claims about itself at all."},
+    {"n": 17, "holds": false, "evidence": "Связаться ends with the phone number and the same two buttons as the header — Написать в WhatsApp and Позвонить — and the footer repeats the WhatsApp link a third time."},
+    {"n": 18, "holds": true, "evidence": "Consistent tall gaps between sections, a held text measure that stops around half width in the intro paragraphs, and rules that align to the same left edge down the page."},
+    {"n": 19, "holds": true, "evidence": "The numbered tabs sitting on the band seams, the mono numerals and the ruled route table are specific choices; nothing reads as a recoloured stock theme."},
+    {"n": 20, "holds": false, "evidence": "The typeset client boxes and the closing section that only repeats the header buttons would both have to be fixed before a studio put this in a case study."}
+  ],
+  "defects": [
+    {"severity": "P1", "what": "Client names are typeset uppercase words in five identical bordered rectangles instead of logo marks; the boxes read as empty logo placeholders with the name typed into them, and a client whose brand is Danone would not accept its name set in the site's own body face.", "where": "Section 05, Нам доверяют"},
+    {"severity": "P1", "what": "The closing section is not a next step — it repeats the header's two buttons verbatim and adds the phone number. Nothing on the page can be filled in or chosen, so a visitor who wants a quote has no on-page path except leaving for WhatsApp.", "where": "Section 08, Связаться, and the footer"},
+    {"severity": "P2", "what": "Two shapes carry the whole page: a hairline-ruled numbered row list and a row of identical bordered boxes. By the midpoint the layout has no move left, and the second half is list, boxes, list again.", "where": "Sections 01 through 07"},
+    {"severity": "P2", "what": "Every band is one of two pale blues from the same hue, so the page never reaches a white or a dark ground. There is no contrast anchor and no rest; the alternation stops registering after about the third section.", "where": "Whole page"},
+    {"severity": "P2", "what": "Only two photographs on a page this tall, and they are the same picture twice — a white FWL trailer in three-quarter view on tarmac. География, Нам доверяют, Почему нас выбирают, Как мы работаем and Связаться carry no image at all, leaving the bottom two-thirds as unbroken text.", "where": "Hero and section 02 hold the only imagery"},
+    {"severity": "P2", "what": "Several sections set their intro paragraph to roughly half the width and leave the right side empty with nothing placed in it — the emptiness reads as a column that lost its content rather than as a held measure.", "where": "Sections 03, 04 and 08 intro paragraphs"},
+    {"severity": "P3", "what": "The 01-08 tab device repeats eight times without a single variation, always the same size, colour and position on the seam.", "where": "Every section seam"},
+    {"severity": "P3", "what": "The theme toggle is the only interactive control on the page and it sits in the header next to the phone number, where it competes for attention with the primary CTA.", "where": "Header, right side"},
+    {"severity": "P3", "what": "The six reason blocks have headings that wrap to two lines in three cases and one line in the others, so the body copy in that grid starts at different heights across the row.", "where": "Section 06, Почему нас выбирают"}
+  ],
+  "aesthetic_in_one_phrase": "Freight dossier on a Swiss grid — monospace numerals, hairline rules and alternating pale-blue bands",
+  "would_a_studio_sign_it": false
+}

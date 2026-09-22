@@ -1,0 +1,109 @@
+{
+  "schema": "superdesign/recon@1",
+  "mode": "build",
+  "generatedAt": "2026-09-22T00:00:00.000Z",
+  "measured": true,
+  "viewport": "1440x900",
+  "theme": "light",
+  "references": [
+    {
+      "name": "ref-a",
+      "url": "https://example.test/real/a",
+      "role": "reference",
+      "measured": true,
+      "cached": false,
+      "fetchedAt": "2026-09-22T00:00:00.000Z",
+      "file": "ref/ref-a.json",
+      "steal": "hairline rules instead of card borders on dense rows",
+      "digest": {
+        "title": "Global Transport and Logistics",
+        "isDark": false,
+        "typeFamily": "golos text",
+        "accent": "oklch(0.55 0.15 259)",
+        "accentHue": 259,
+        "accentShare": 0.02,
+        "radiusBase": 4,
+        "shadowMode": "border-first",
+        "spacingUnit": 8,
+        "measureCh": 72,
+        "medianUiMs": 150,
+        "namedTokens": null
+      }
+    },
+    {
+      "name": "ref-b",
+      "url": "https://example.test/walled/b",
+      "role": "reference",
+      "measured": true,
+      "cached": false,
+      "fetchedAt": "2026-09-22T00:00:00.000Z",
+      "file": "ref/ref-b.json",
+      "steal": "one dark inverted band carrying the fleet photograph",
+      "digest": {
+        "title": "Radware Captcha Page",
+        "isDark": false,
+        "typeFamily": "golos text",
+        "accent": null,
+        "accentHue": 259,
+        "accentShare": 0,
+        "radiusBase": 0,
+        "shadowMode": "border-first",
+        "spacingUnit": 0,
+        "measureCh": 40,
+        "medianUiMs": 0,
+        "namedTokens": null
+      }
+    },
+    {
+      "name": "ref-c",
+      "url": "https://example.test/real/c",
+      "role": "reference",
+      "measured": true,
+      "cached": false,
+      "fetchedAt": "2026-09-22T00:00:00.000Z",
+      "file": "ref/ref-c.json",
+      "steal": "the accent restricted to the primary action alone",
+      "digest": {
+        "title": "Global Transport and Logistics",
+        "isDark": false,
+        "typeFamily": "golos text",
+        "accent": "oklch(0.55 0.15 259)",
+        "accentHue": 259,
+        "accentShare": 0.02,
+        "radiusBase": 4,
+        "shadowMode": "border-first",
+        "spacingUnit": 8,
+        "measureCh": 72,
+        "medianUiMs": 150,
+        "namedTokens": null
+      }
+    }
+  ],
+  "spectrum": {
+    "typeFamily": {
+      "values": [],
+      "converged": null
+    },
+    "radiusBase": {
+      "values": [],
+      "converged": null
+    },
+    "shadowMode": {
+      "values": [],
+      "converged": null
+    },
+    "spacingUnit": {
+      "values": [],
+      "converged": null
+    },
+    "medianUiMs": {
+      "values": [],
+      "converged": null
+    },
+    "accentHue": {
+      "values": [],
+      "spreadDeg": null,
+      "converged": null
+    }
+  }
+}

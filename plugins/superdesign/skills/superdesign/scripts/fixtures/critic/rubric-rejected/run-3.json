@@ -1,0 +1,38 @@
+{
+  "criteria": [
+    {"n": 1, "holds": true, "evidence": "Nameable as an ice-blue Swiss spec sheet: a visible column grid behind the hero, mono numerals indexing every list, navy number chips straddling each section seam."},
+    {"n": 2, "holds": true, "evidence": "Hierarchy is carried by weight and size — near-black bold headings, slate body text, tiny mono indices; the two ground tints are close in luminance so nothing depends on hue."},
+    {"n": 3, "holds": false, "evidence": "Sections 06, 07 and 08 run three deep on the same hairline-ruled text-row shape, and sections 01 and 03 are the same row of four bordered cards."},
+    {"n": 4, "holds": true, "evidence": "Hero is a left-aligned split: eyebrow, huge headline, two-column fact rows and buttons on the left, a truck photograph bleeding off the right edge, over a faint vertical column grid."},
+    {"n": 5, "holds": true, "evidence": "Two real photographs of the company's own tractor-trailers, both carrying the FWL livery and a readable plate, in the hero and in the second service block."},
+    {"n": 6, "holds": false, "evidence": "Danone, Hamle, Шинлайн, Americano and Samal are set as letterspaced uppercase type inside five outlined boxes, not as logo images."},
+    {"n": 7, "holds": false, "evidence": "Every action is a link or a button — WhatsApp, Позвонить, anchor nav; the only non-link control is the header light/dark toggle. No form field, no route or regime selector."},
+    {"n": 8, "holds": true, "evidence": "The hero headline is genuinely huge against the body copy, and the mono list indices and section-chip numerals are genuinely tiny — both extremes are present."},
+    {"n": 9, "holds": true, "evidence": "The whole palette is navy plus two pale blue tints, all flat fills; no purple, no violet-blue, no gradient anywhere."},
+    {"n": 10, "holds": true, "evidence": "No blobs, glows or abstract 3D — the only imagery is two photographs, and the rest is flat panels and hairlines."},
+    {"n": 11, "holds": true, "evidence": "Icons are thin line glyphs (chat bubble, handset, sun); no emoji on the page."},
+    {"n": 12, "holds": true, "evidence": "Deep navy appears only on the two CTA buttons and the eight numbered section chips; nothing else is filled with it."},
+    {"n": 13, "holds": false, "evidence": "All eight sections alternate mechanically between the same two pale blue tints — no white ground, no dark ground, no section that decides anything different."},
+    {"n": 14, "holds": true, "evidence": "Cards appear twice, but the page also owns a split hero, a photo-plus-list service block, numbered hairline row lists, an origin→destination route table and a logo strip."},
+    {"n": 15, "holds": true, "evidence": "Copy names ТР ТС 021/2011, the ATP certificate and the FRC body class, the thermograph, six concrete corridors (Казахстан→Россия, Европа→СНГ) and a real phone number."},
+    {"n": 16, "holds": true, "evidence": "No lorem, no placeholder block, and no statistics section at all — nothing like '500+ машин' is invented."},
+    {"n": 17, "holds": false, "evidence": "The closing Связаться section ends on the identical 'Написать в WhatsApp' and 'Позвонить' pair that sits in the header, plus the same phone number."},
+    {"n": 18, "holds": false, "evidence": "Large unfilled right halves in Услуги, География and Связаться, and the first service block runs a full-width list with an empty right side while the second is a photo-plus-content split."},
+    {"n": 19, "holds": true, "evidence": "The grid overlay, seam-straddling number chips, mono index column and business-specific copy are decided moves no purchased template ships with."},
+    {"n": 20, "holds": false, "evidence": "A studio would first replace the typeset client names with marks, balance the two service blocks, and break the two-tint band rhythm."}
+  ],
+  "defects": [
+    {"severity": "P1", "what": "Client names are typeset words in outlined boxes instead of logo marks, so the strongest trust asset on the page reads as a placeholder row.", "where": "Section 05 'Нам доверяют' — the five-box strip"},
+    {"severity": "P1", "what": "A page whose whole promise is 'напишите маршрут, груз и режим' gives the visitor nothing to write it into — no request form, no route or temperature selector, only outbound links.", "where": "Section 08 'Связаться' and the header"},
+    {"severity": "P2", "what": "Two sibling service blocks are built differently — one is a full-width list with a dead right side, the other a photo-left split — so the section reads as unfinished rather than varied.", "where": "Section 02 'Услуги', Термоперевозки vs Грузоперевозки"},
+    {"severity": "P2", "what": "Eight sections alternate between exactly two pale blue tints with no white and no dark ground, so the page has no tonal climax and the contact section is as quiet as the FAQ-like middle.", "where": "Whole page, every section seam"},
+    {"severity": "P2", "what": "Sections 01 and 03 are the same composition — heading, intro paragraph, row of four bordered cards — with only the words changed.", "where": "'Что мы берём на себя' and 'Свои рефрижераторы и партнёрская сеть'"},
+    {"severity": "P2", "what": "The closing call to action repeats the header's button pair verbatim, so the page ends where it started instead of on a new step.", "where": "Section 08 'Связаться'"},
+    {"severity": "P2", "what": "Three consecutive sections use the same hairline-ruled text-row device, which flattens the reading rhythm just before the contact block.", "where": "Sections 06 'Почему нас выбирают', 07 'Как мы работаем', 08 'Связаться'"},
+    {"severity": "P3", "what": "Six named corridors are rendered as a text table with arrows and no map, on a page that otherwise shows it can use imagery.", "where": "Section 04 'География'"},
+    {"severity": "P3", "what": "Only two photographs carry an extremely tall page; everything after the second service block is type on tint.", "where": "Below section 02 to the footer"},
+    {"severity": "P3", "what": "The 'Позвонить' ghost button sits directly under the same phone number already set large in mono, duplicating one action twice in one block.", "where": "Section 08 'Связаться'"}
+  ],
+  "aesthetic_in_one_phrase": "Ice-blue Swiss spec sheet for a freight company — column grid, mono numerals, fleet photography",
+  "would_a_studio_sign_it": false
+}

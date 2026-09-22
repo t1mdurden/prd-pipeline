@@ -1,0 +1,1 @@
+prd-pipeline — my tier-adaptive build pipeline for Claude Code (idea → spec → grill → confirmed plan → worktree build → verified ship), and the plugin marketplace that ships it. OWN: my project, `t1mdurden/prd-pipeline`.

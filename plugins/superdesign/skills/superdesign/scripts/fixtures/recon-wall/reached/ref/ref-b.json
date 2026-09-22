@@ -1,0 +1,27 @@
+{
+  "url": "https://example.test/real/b",
+  "title": "Global Transport and Logistics",
+  "nodeCount": 512,
+  "palette": {
+    "accent": "oklch(0.55 0.15 259)",
+    "accentShare": 0.02
+  },
+  "radius": {
+    "base": 4
+  },
+  "shadow": [],
+  "spacing": {
+    "unit": 8
+  },
+  "type": {
+    "stacks": [
+      [
+        "Golos Text, sans-serif"
+      ]
+    ],
+    "measureCh": 72
+  },
+  "motion": {
+    "medianUiMs": 150
+  }
+}

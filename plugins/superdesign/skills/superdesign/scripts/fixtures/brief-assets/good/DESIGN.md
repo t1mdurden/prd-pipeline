@@ -6,3 +6,5 @@ ASSETS:        logo: public/logo.svg
                photography: public/logo.svg
                languages: ru, kk, en
 RADIUS:        0
+
+CONVERSION: link — this fixture exercises the ASSETS child; the conversion child is tested in fixtures/conversion/

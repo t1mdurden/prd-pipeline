@@ -157,6 +157,24 @@ function check() {
     }
     // An entry that claims a measurement must have one on disk. This is the anti-fabrication check:
     // a written-out recon.json is trivial to invent, a ref/<name>.json is not.
+    // A reference the browser never actually reached is worse than one nobody measured: the
+    // hand-written escape hatch is honest about being empty, this one hands Phase 1 a spectrum
+    // computed from a bot wall. 2026-09-22: a 37-node "Radware Captcha Page" passed --check as
+    // `measured` and its digest went into the convergence read.
+    // Read the CARD, not the claim. `unreached` is written at measure time, so a recon.json
+    // written before this guard existed has no flag at all — and one such card, a 37-node
+    // "Radware Captcha Page", had been in the fastway peer corpus for a week. So --check re-runs
+    // the same test against the measurement on disk and does not depend on the flag being there.
+    let unreached = e.unreached || null
+    if (!unreached && e.measured !== false && e.file) {
+      const cf = e.file.startsWith('/') ? e.file : join(dir, e.file)
+      if (existsSync(cf)) { try { unreached = wallReason(JSON.parse(readFileSync(cf, 'utf8'))) } catch { /* the next check reports an unreadable card */ } }
+    }
+    if (unreached) {
+      v++
+      console.error(`✗ recon: ${name} was never reached — ${unreached}`)
+      console.error('    Measure it with a headed browser, or replace it. Its digest is not a read on the field.')
+    }
     if (e.measured !== false) {
       const f = e.file && (e.file.startsWith('/') ? e.file : join(dir, e.file))
       if (!f || !existsSync(f)) {
@@ -166,7 +184,7 @@ function check() {
         console.error(`⚠ recon: ${name} was measured ${Math.round(ageDays(e.fetchedAt))} days ago — past the ${TTL_DAYS}-day TTL. Re-run with --fresh.`)
       }
     }
-    if (!bad) console.log(`  [ok] ${String(name).padEnd(28)} ${e.measured === false ? 'unmeasured' : 'measured'} · steal: ${String(e.steal).trim()}`)
+    if (!bad && !unreached) console.log(`  [ok] ${String(name).padEnd(28)} ${e.measured === false ? 'unmeasured' : 'measured'} · steal: ${String(e.steal).trim()}`)
   }
 
   // Cross-entry, run after each line has passed on its own: three copies of one sentence are one
@@ -268,6 +286,29 @@ function spectrum(ds) {
   }
 }
 
+/* ── did we actually reach the page? ──────────────────────────────────────────────────────── */
+
+// Found on the 2026-09-22 field run. `recon --refs https://www.stef.com/corporate/en` returned
+// exit 0, wrote `measured: true`, and `--check` printed `[ok] www-stef-com-corporate-en measured`
+// — for a 37-node page titled "Radware Captcha Page". The same card, 37 nodes, has been sitting in
+// the fastway peer corpus since 2026-09-16 and every number derived from it was derived from a bot
+// wall. This is the 2026-08-25 verifier's finding — "recon --registry measured a page returning
+// HTTP 404 and wrote measured:true beside it" — on the path that was never fixed.
+//
+// The floor is calibrated, not chosen: across the 18 peer cards on disk the smallest REAL page is
+// einride at 262 nodes and the next is thermoking at 352; the captcha is 37. 120 sits in the gap
+// with better than 2× headroom under the smallest real site.
+const WALL_NODES = 120
+const WALL_TITLE = /captcha|are you (a )?human|just a moment|attention required|access denied|checking your browser|verify you are|403 forbidden|404|not found|page unavailable|enable javascript/i
+
+function wallReason(report) {
+  const n = report.nodeCount ?? 0
+  const t = String(report.title || '')
+  if (WALL_TITLE.test(t)) return `the page titled "${t.slice(0, 60)}" is an interstitial, not the site`
+  if (n < WALL_NODES) return `only ${n} rendered nodes (floor ${WALL_NODES}; the smallest real peer on disk is 262) — a bot wall, a cookie gate or an empty shell`
+  return null
+}
+
 /* ── modes ────────────────────────────────────────────────────────────────────────────────── */
 
 function run(mode, urls, names) {
@@ -286,9 +327,11 @@ function run(mode, urls, names) {
       }
       return { harness: m.harness }
     }
+    const wall = wallReason(m.report)
+    if (wall) console.error(`✗ recon: ${url}\n    ${wall}\n    Recorded measured:false. Measure it with a headed browser, or choose another reference.`)
     entries.push({
       name: names?.[i] || slug(url), url, role: mode === 'redesign' ? 'target' : mode === 'compose' ? 'registry-demo' : 'reference',
-      measured: true, cached: m.fromCache, fetchedAt: m.report.reconFetchedAt,
+      measured: !wall, unreached: wall || undefined, cached: m.fromCache, fetchedAt: m.report.reconFetchedAt,
       file: relative(dir, m.path), steal: steals[i] ? String(steals[i]).trim() : '',
       digest: digest(m.report),
     })

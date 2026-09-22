@@ -1,0 +1,24 @@
+{
+  "winner": "B",
+  "margin": "clear",
+  "why": "B carries actual content objects a client can use — a quote form with named fields, a drawn route-network map with labelled nodes, real client marks (Danone, the red Shin-Line and Hamle logos) — while A's entire page below the hero is small grey body text stacked in boxes, so in grayscale A has almost no hierarchy left and every section reads at the same weight. A reuses one module all the way down: a pale blue full-bleed band, a heading, a paragraph, then a row of four equal text cards or a numbered 01-05 list, repeated through services, fleet, geography and process until the sections stop being distinguishable from each other. B varies its section shapes deliberately — light cards, a dark inset panel for the map, a dark full-width band for the booking steps, a thin accordion for FAQ — which is what actually produces rhythm and lets a reader locate themselves on a long page.",
+  "loser_fatal_flaw": "A is a text document wearing a layout: one repeated band-heading-cards module for eight sections, with tiny uniform grey copy and no imagery, diagram, form or price surface anywhere after the hero, so nothing on the page is a thing you can do.",
+  "winner_worst_flaw": "The client logo strip is raw third-party artwork dropped in at mismatched scale and colour (two saturated reds against an otherwise restrained blue system) with no shared treatment — no greyscale, no common optical height — and it sits directly under a header that already stacks a nav row over a language-switcher row, making the top of the page the least disciplined part of it.",
+  "which_reads_more_ai_generated": "A",
+  "ai_evidence": [
+    "Decorative 01-08 section counters in small caps on every band, a Swiss-editorial tic applied uniformly with no content reason",
+    "The same four-equal-text-card grid used for temperature types, partner network, and selling points, each card a bold label plus two lines of filler",
+    "Numbered 01-05 list rows reappearing in three separate sections (services, geography, process) with identical row treatment",
+    "Copy that describes the offer in general terms rather than stating anything checkable - no price, no transit time, no route sheet, no named certification beyond a passing ATP mention",
+    "Client trust row rendered as brand names typeset as plain uppercase text in outlined boxes instead of actual logos",
+    "Alternating pale-blue washes as the only device separating sections, with body type, size and colour unchanged across the whole page"
+  ],
+  "repeats_itself": {
+    "A": true,
+    "B": false
+  },
+  "real_imagery": {
+    "A": true,
+    "B": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "criteria": [
+    {"n": 1, "holds": true, "evidence": "Swiss-technical logistics dossier: mono section counters 01-08 in navy chips straddling the band seams, hairline rules, ice-blue over near-white, no decoration."},
+    {"n": 2, "holds": true, "evidence": "Hierarchy is carried by weight and size, not hue: near-black heavy display headlines, mid-slate body, tiny mono eyebrows and row numerals; desaturating would lose nothing but the band tint."},
+    {"n": 3, "holds": false, "evidence": "The four-up bordered card row is used twice (the 'Что мы берём на себя' block and the 'Свои рефрижераторы' block), and the 'Нам доверяют' row is a five-up version of the same boxed shape; the numbered rule-row list also recurs in Услуги, География and Как мы работаем."},
+    {"n": 4, "holds": true, "evidence": "Hero is an asymmetric split: left-aligned display headline plus a two-column fact grid and two buttons on the left, a full-bleed-to-edge truck photo on the right, over a faint vertical column grid."},
+    {"n": 5, "holds": true, "evidence": "Two real truck photographs, each showing the FWL globe logo painted on the trailer and a legible Kazakh plate; the header lockup uses the FastWay wordmark."},
+    {"n": 6, "holds": false, "evidence": "The 'Нам доверяют' row renders DANONE, HAMLE, ШИНЛАЙН, AMERICANO and SAMAL as uppercase letterspaced text inside plain bordered boxes; no logo images anywhere."},
+    {"n": 7, "holds": false, "evidence": "No field, no selector, no quote or route picker; the only control on the page is the light/dark toggle in the header, and every other affordance is a WhatsApp or tel link."},
+    {"n": 8, "holds": true, "evidence": "The hero headline is genuinely huge and set tight over two lines, while the section counters, eyebrow 'СНГ · ЕВРОПА' and list numerals are genuinely tiny mono."},
+    {"n": 9, "holds": true, "evidence": "The whole palette is navy, ice blue and near-white; nothing violet, and no gradient wash anywhere."},
+    {"n": 10, "holds": true, "evidence": "No blobs, glows, mesh or abstract 3D; the only imagery is the two photographs."},
+    {"n": 11, "holds": true, "evidence": "Icons are drawn line marks — a chat bubble on the WhatsApp button, a handset on 'Позвонить', a sun on the theme toggle."},
+    {"n": 12, "holds": true, "evidence": "Navy appears only on the two primary buttons, the small section counter chips and the logo bar; it is never used to fill a section."},
+    {"n": 13, "holds": false, "evidence": "Every section sits on its own tinted band — pale blue and near-white alternate mechanically all the way down, with no dark, photographic or otherwise decided ground in 8 sections."},
+    {"n": 14, "holds": true, "evidence": "Besides cards the page owns numbered rule rows, a two-column origin→destination route table with arrows, an image-plus-list split for the second service, and a five-step label/description table."},
+    {"n": 15, "holds": true, "evidence": "Copy names ТР ТС 021/2011, the ATP certificate, FRC class, thermograph readings, Kazakhstan→Russia and Europe→CIS legs, and a real phone number +7 708 180 5200."},
+    {"n": 16, "holds": true, "evidence": "No lorem, no placeholder text, and the page carries no numeric stat block at all — nothing invented to check."},
+    {"n": 17, "holds": false, "evidence": "The closing 'Связаться' block ends with the same 'Написать в WhatsApp' button that sits in the header, plus a 'Позвонить' repeat; the only new element is the phone number set large."},
+    {"n": 18, "holds": true, "evidence": "Measure is held consistently, headline-to-body and section-to-section gaps are stable, and the hero leaves real air around the display type rather than filling it."},
+    {"n": 19, "holds": true, "evidence": "The counter chips notched into the band seams, the mono numerals and the route table are specific enough that it does not read as a recoloured purchase."},
+    {"n": 20, "holds": false, "evidence": "A studio would have to replace the typeset client names with real marks, break the two-tint banding, and stop the closing CTA duplicating the header before showing this."}
+  ],
+  "defects": [
+    {"severity": "P1", "what": "Client trust is claimed with five brand names typeset as letterspaced words in empty bordered boxes — including Danone — which reads as unfilled logo placeholders rather than evidence", "where": "'Нам доверяют' section (05)"},
+    {"severity": "P1", "what": "Nothing on the page can be filled in or chosen; a carrier page that asks for route, cargo, regime and dates offers no field for any of them, only outbound WhatsApp and tel links", "where": "whole page, most acutely the closing 'Связаться' block"},
+    {"severity": "P1", "what": "The page closes on a verbatim repeat of the header button pair instead of a new next step", "where": "'Связаться' section (08) versus the header"},
+    {"severity": "P2", "what": "Three boxed-row variants do most of the compositional work: the four-up card row appears twice and the trust row is a five-up of the same box", "where": "the block above 'Услуги', section 03 'Свои рефрижераторы', section 05"},
+    {"severity": "P2", "what": "Two near-identical light blue tints alternate for the entire scroll; no dark ground, no photographic ground, so nothing marks arrival anywhere in a very long page", "where": "every section boundary"},
+    {"severity": "P2", "what": "Photography stops after the services block — the lower two thirds of the page is type on flat tint, and the closing contact block has no image at all", "where": "sections 03 through 08"},
+    {"severity": "P3", "what": "Section intro paragraphs are held to a narrow left measure with the right half of the band left empty, which reads as leftover grid rather than a decided asymmetry", "where": "'Услуги', 'География', 'Как мы работаем', 'Связаться' intros"},
+    {"severity": "P3", "what": "The faint vertical column grid is drawn in the hero and then never referenced again on the page", "where": "hero versus all later sections"}
+  ],
+  "aesthetic_in_one_phrase": "Swiss technical dossier for a cold chain — navy and ice blue, mono counters, hairline rules",
+  "would_a_studio_sign_it": false
+}

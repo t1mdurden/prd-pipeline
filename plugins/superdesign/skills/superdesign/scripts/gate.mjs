@@ -118,6 +118,7 @@ function run(name, cmd, args, { note } = {}) {
 //    disk, or say UNAVAILABLE with the date it was asked for. "UNAVAILABLE — asked 2026-09-16" is a
 //    passing answer; silence is not. A brief that never mentions logos cannot be said to have
 //    considered them, and that is the only thing a script can decide here.
+let BRIEF = null
 {
   const REQUIRED = ['logo', 'client-logos', 'photography']
   let briefDir = resolve(target); let brief = null
@@ -125,6 +126,7 @@ function run(name, cmd, args, { note } = {}) {
     const c = join(briefDir, 'DESIGN.md')
     if (existsSync(c)) brief = c
   }
+  BRIEF = brief
   if (!brief) {
     if (!asJson) console.log(`\nbrief-assets — skipped: no DESIGN.md at or above ${target}. Phase 1 has not run, or this gate is pointed at a sub-tree.`)
   } else {
@@ -162,6 +164,68 @@ function run(name, cmd, args, { note } = {}) {
       else for (const p of problems) console.log(`  ✗ ${p}`)
     }
     record('brief-assets', Math.min(problems.length, 63))
+  }
+}
+
+// 0b. The seed. MUST 2 — "take the least-probable direction that still clears the brief" — is the
+//     one MUST whose own entry in SKILL.md admits it is "Unmeasurable — the probability here is the
+//     model's own estimate of its own prior." brand-to-system.md § "The seed axis" has always
+//     enumerated the axes and instructed the model to "roll one value on each"; a model cannot roll.
+//     `seed.mjs --check` re-derives every axis from the brief's own seed and counts the axes the
+//     brief contradicts, which turns a sentence into a count. Absent seed and absent block are one
+//     violation each, not a skip — but a brief with no SEED at all is reported and NOT counted,
+//     because every brief written before this child existed has none and the gate is not a time
+//     machine. Say what is missing; refuse only a seed that was written and then ignored.
+if (BRIEF) {
+  const seeded = /^\s*SEED:\s*[0-9a-fA-F]{32,}\s*$/m.test(readFileSync(BRIEF, 'utf8'))
+  if (!seeded) {
+    if (!asJson) {
+      console.log(`\nbrief-seed — ${relative(process.cwd(), BRIEF)}`)
+      console.log('  · no SEED: line — MUST 2 is unenforced on this build. Draw one with')
+      console.log('    node .claude/skills/superdesign/scripts/seed.mjs --new --register <conservative|neutral|expressive>')
+    }
+    record('brief-seed', 0, 'no SEED: line — reported, not counted')
+  } else {
+    run('brief-seed', 'node', [join(HERE, 'seed.mjs'), '--check', BRIEF])
+  }
+}
+
+// 0c. How the page converts. The fastway build shipped a lead-generation landing page with
+//     `grep -c '<form\|<input\|<select\|<textarea' Landing.tsx` = 0 while `cookbook/forms.md` sat
+//     unread on disk; the build the owner accepted carries six fields. On 2026-09-22 a blind
+//     screenshot critic scored the two builds three times each on twenty binary criteria, and
+//     "there is at least one thing the visitor can fill in or choose on the page itself, not only
+//     links" was one of only three criteria that separated them perfectly — 3/3 against 0/3.
+//
+//     It is NOT a blanket cap, and the corpus is why: four of the five pages in `examples/` carry
+//     zero form controls and are not wrong to. So this is a brief-versus-build check, the same
+//     shape as brief-assets. Phase 1 declares how the surface converts; the build has to match it.
+//       CONVERSION: form   → the tree must contain a form control
+//       CONVERSION: call | link | none → nothing to check, the decision is recorded and that is the point
+if (BRIEF) {
+  const txt = readFileSync(BRIEF, 'utf8')
+  const m = /^\s*CONVERSION:\s*(form|call|link|none)\b/im.exec(txt)
+  if (!m) {
+    if (!asJson) {
+      console.log(`\nbrief-conversion — ${relative(process.cwd(), BRIEF)}`)
+      console.log('  ✗ no CONVERSION: row. Phase 1 never decided how this surface converts, so nothing can')
+      console.log('    check that it does. One of: form · call · link · none.')
+    }
+    record('brief-conversion', 1)
+  } else if (m[1].toLowerCase() === 'form') {
+    const CONTROL = /<(form|input|select|textarea)\b/i
+    const hits = files.filter((f) => CONTROL.test(readFileSync(f, 'utf8')))
+    if (!asJson) {
+      console.log(`\nbrief-conversion — ${relative(process.cwd(), BRIEF)} declares CONVERSION: form`)
+      if (hits.length) console.log(`  ✓ ${hits.length} file(s) carry a form control`)
+      else {
+        console.log('  ✗ the brief says this surface converts through a form and the tree has no form control.')
+        console.log('    cookbook/forms.md owns the layout, the validation timing and the error surfaces.')
+      }
+    }
+    record('brief-conversion', hits.length ? 0 : 1)
+  } else if (!asJson) {
+    console.log(`\nbrief-conversion — ${relative(process.cwd(), BRIEF)} declares CONVERSION: ${m[1]} · nothing to check`)
   }
 }
 
