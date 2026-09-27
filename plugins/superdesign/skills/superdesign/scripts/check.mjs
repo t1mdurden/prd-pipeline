@@ -95,6 +95,7 @@ const axeSource = axe.source ?? axe.default?.source
 // The brief: only the lines this probe can verify.
 function readBrief(p) {
   if (!p) return null
+  if (!existsSync(p)) { console.error(`✗ --brief ${p}: no such file (run from the project root)`); process.exit(64) }
   const t = readFileSync(p, 'utf8')
   const line = k => (t.match(new RegExp(`^${k}:\\s*(.+)$`, 'm')) || [])[1]?.trim()
   const paths = s => (s || '').split(/[\s,]+/).filter(x => /\.(png|jpe?g|webp|avif|svg|gif|mp4|webm)$/i.test(x))
@@ -108,6 +109,11 @@ function readBrief(p) {
 }
 const brief = readBrief(briefPath)
 const expectTitle = existsSync('index.html') && !opt('--any-title') ? (readFileSync('index.html', 'utf8').match(/<title>([^<]*)<\/title>/) || [])[1]?.trim() : null
+// A scaffold's default title is shared by every other scaffold on this machine, so it proves nothing.
+if (expectTitle && /^(vite|vite-app|vite \+ react( \+ ts)?|react app|app)$/i.test(expectTitle)) {
+  console.error(`✗ ./index.html still has the scaffold title "${expectTitle}" — give the project its real <title> first; check.mjs uses it to know it is probing this project.`)
+  process.exit(64)
+}
 
 const LEFTOVERS = [/deifkwefumgah\.cloudfront\.net/, /shadcnblocks\.com/i, /\bAcme Inc\b/, /m@example\.com/,
   /github\.com\/shadcn\.png/, /i\.pravatar\.cc/, /lorem ipsum/i]
@@ -125,14 +131,23 @@ try {
     const errors = []
     page.on('pageerror', e => errors.push(e.message.split('\n')[0]))
     page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text().split('\n')[0]) })
-    page.on('response', r => { if (r.status() >= 400) errors.push(`asset ${r.status()}: ${r.url()}`) })
+    page.on('response', r => {
+      if (r.status() >= 400) errors.push(`asset ${r.status()}: ${r.url()}`)
+      // Vite's SPA fallback answers a missing /public file with 200 and index.html — same defect.
+      else if (['image', 'media', 'font', 'script', 'stylesheet'].includes(r.request().resourceType()) && /text\/html/.test(r.headers()['content-type'] || ''))
+        errors.push(`asset missing (served index.html instead): ${r.url()}`)
+    })
     page.on('requestfailed', r => { if (!/favicon/.test(r.url())) errors.push(`asset failed: ${r.url()}`) })
     try { await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }) }
     catch (e) { console.error(`✗ cannot load ${url}: ${e.message.split('\n')[0]}`); process.exit(67) }
     await page.waitForTimeout(600)
-    if (expectTitle && (await page.title()).trim() !== expectTitle) {
-      console.error(`✗ ${url} serves "${await page.title()}", but ./index.html says "${expectTitle}" — that is another app on this port. Start this project with --strictPort on a free port.`)
-      process.exit(67)
+    if (expectTitle && w === 1440 && scheme === 'light') {
+      // The title the server sends, before any script can rewrite document.title.
+      const raw = /^https?:/.test(url) ? ((await (await page.request.get(url)).text()).match(/<title>([^<]*)<\/title>/) || [])[1]?.trim() : (await page.title()).trim()
+      if (raw !== expectTitle) {
+        console.error(`✗ ${url} serves "${raw}", but ./index.html says "${expectTitle}" — that is another app on this port. Start this project with --strictPort on a free port.`)
+        process.exit(67)
+      }
     }
     await page.screenshot({ path: join(outDir, `${w}-${scheme}.png`) })
     if (scheme === 'light') await page.screenshot({ path: join(outDir, `${w}-full.png`), fullPage: true })
