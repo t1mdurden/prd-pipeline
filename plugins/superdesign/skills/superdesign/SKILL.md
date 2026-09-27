@@ -99,7 +99,7 @@ was already his own pick of a direction. **Marketing**: the hero block and the p
 one-line "wins when / costs" and send him the URL plus `serve --shots` screenshots. His pick →
 `variants.mjs keep <name>`, `PICKED:` in DESIGN.md.
 
-**Unattended** (nobody to ask): build on `vega` + `dashboard-01` (app) or `nova` + the first `--image`
+**Unattended** (nobody to ask): build on `vega` + `dashboard-01` with the `sidebar-07` sidebar (app) or `nova` + the first `--image`
 hero (marketing) and write `PICKED: unattended default`; still leave `serve --shots` screenshots of 2–3
 variants for him to choose from later. The run ends UNPROVEN.
 
@@ -114,7 +114,7 @@ Everything arrives through `base.mjs`, which records it for lint:
 ```bash
 node $SD/base.mjs add dashboard-01 @shadcnblocks/data-table1   # also recovers pages the CLI skips in Vite
 node $SD/base.mjs apply nova                                    # switch preset
-node $SD/base.mjs brand "oklch(0.52 0.12 170)"                  # the owner's brand hue → primary/ring/chart-1/sidebar-primary
+node $SD/base.mjs brand "oklch(0.52 0.12 170)"                  # brand → primary/ring/chart-1/sidebar-primary; on marketing also tints the greys to its hue
 node $SD/base.mjs font "Onest Variable" @fontsource-variable/onest   # Cyrillic-first sans
 ```
 

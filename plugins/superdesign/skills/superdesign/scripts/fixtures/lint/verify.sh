@@ -27,6 +27,11 @@ fresh darkbrand;  (cd "$W" && node "$S/base.mjs" brand "oklch(0.41 0.10 250)" >/
 if awk '/^\.dark/,/}/' "$W/src/index.css" | grep -q -- '--primary: oklch(0.720'; then echo "PASS  brand lifts the .dark primary to L 0.72"; else echo "FAIL  .dark primary not lifted"; fail=$((fail+1)); fi
 fresh fontclean;  (cd "$W" && node "$S/base.mjs" font "Onest Variable" >/dev/null)
 grep -q 'fontsource-variable/inter' "$W/src/index.css" && { echo "FAIL  the replaced font's import is still there"; fail=$((fail+1)); } || echo "PASS  base.mjs font drops the unused Inter import"
+fresh tintapp;    (cd "$W" && node "$S/base.mjs" brand "oklch(0.41 0.10 250)" >/dev/null)
+grep -q -- '--background: oklch(1 0 0);' "$W/src/index.css" && echo "PASS  app surface: brand leaves the greys alone" || { echo "FAIL  app surface greys were tinted"; fail=$((fail+1)); }
+fresh tintmkt;    printf 'SURFACE: marketing\n' > "$W/DESIGN.md"; (cd "$W" && node "$S/base.mjs" brand "oklch(0.41 0.10 250)" >/dev/null)
+grep -q -- '--background: oklch(0.962 0.012 250' "$W/src/index.css" && awk '/^:root/,/}/' "$W/src/index.css" | grep -q -- '--primary-foreground: oklch(0.985 0 0)' && echo "PASS  marketing: ground tinted to the brand hue, primary-foreground untouched" || { echo "FAIL  marketing tint"; grep -- '--background\|--primary-foreground' "$W/src/index.css"; fail=$((fail+1)); }
+(cd "$W" && node "$S/lint.mjs" >/dev/null 2>&1) && echo "PASS  tinted theme lints clean (script wrote it)" || { echo "FAIL  tinted theme fails lint"; fail=$((fail+1)); }
 fresh mkt;        printf 'SURFACE: marketing\n' > "$W/DESIGN.md"; sed -i '' "s/'Inter Variable', sans-serif/'Fraunces', serif/" "$W/src/index.css"; expect mkt theme
 W="$T/nobase"; cp -R "$H/project" "$W"; (cd "$W" && node "$S/lint.mjs" >/dev/null 2>&1); e=$?
 [ "$e" -eq 65 ] && echo "PASS  no base.json → exit 65" || { echo "FAIL  no base.json → exit $e"; fail=$((fail+1)); }

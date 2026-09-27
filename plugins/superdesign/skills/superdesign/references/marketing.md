@@ -32,6 +32,19 @@ case study) → pricing if he sells plans → CTA or contact form → footer. Ev
 3. Put the file names in `HERO-VISUAL:` — `check.mjs --brief` fails the page if they are not inside
    the first viewport at both 1440 and 390 wide.
 
+## Colour and the photo belong together
+
+His verdict on the first v3 landing (2026-09-27): «оригинал лучше, цвета не подходят и картинка не
+сливается с background… только блоки относительно не плохо». The blocks were right; the paint was not.
+What his accepted page does, and what `base.mjs brand` now does on a marketing surface:
+- the ground carries the brand's hue at low chroma (`--background` oklch 0.962 0.012 H), cards stay white
+  on it, ink is the brand's navy (L 0.24, C 0.06) — so a photo with sky and brand livery sits *in* the
+  page instead of on it. All grounds stay under C 0.02, below the ground-tint cap.
+- the hero photo is framed, not dropped in: a large radius (`rounded-2xl`), `object-cover` at 4:3, and
+  a bottom scrim from the brand's dark (`from-[oklch(0.22_0.06_H/0.85)]`) carrying the wordmark and one
+  short label in `text-primary-foreground`.
+Pick a photo whose dominant tone shares the brand's hue family where he has the choice.
+
 ## Logos, brand, copy
 
 - Client logos only from `ASSETS: client-logos:`, and only after you looked at each file: in the first

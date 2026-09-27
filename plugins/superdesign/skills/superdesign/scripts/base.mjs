@@ -6,7 +6,9 @@
 //   node base.mjs add <ids...>        shadcn add, then recover any registry:page the CLI skipped
 //                                     (it skips them outside Next — dashboard-01's page.tsx), snapshot
 //   node base.mjs apply <preset>      shadcn apply <preset>, re-apply the brand, re-snapshot
-//   node base.mjs brand <oklch>       write the brand hue into the keys a brand may own, snapshot
+//   node base.mjs brand <oklch> [--tint|--no-tint]
+//                                     write the brand hue into the keys a brand may own; on a marketing
+//                                     surface (DESIGN.md SURFACE) also carry its hue into the preset's greys
 //   node base.mjs font "<Family>" [fontsource-pkg]   set --font-sans (e.g. "Onest" for Cyrillic), snapshot
 //   node base.mjs recover <item.json> write a registry item's page files from a local JSON (offline)
 //   node base.mjs status
@@ -135,23 +137,48 @@ function apply(preset) {
 
 function brand(value) {
   if (!/^oklch\(\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*\)$/.test(value || '')) { console.error('✗ brand must be oklch(L C H), e.g. "oklch(0.41 0.10 250)"'); process.exit(64) }
+  const surface = (() => { try { return (readFileSync(join(ROOT, 'DESIGN.md'), 'utf8').match(/^SURFACE:\s*(\w+)/m) || [])[1] } catch { return null } })()
   snap.brand = value
+  snap.tint = rest.includes('--tint') || (surface === 'marketing' && !rest.includes('--no-tint'))
   writeBrand(value)
   save()
-  console.log(`base: brand ${value} → ${BRAND_KEYS.join(' ')}`)
+  console.log(`base: brand ${value} → ${BRAND_KEYS.join(' ')}${snap.tint ? ' · neutrals tinted to its hue' : ''}`)
 }
 
 // Light mode takes the brand as given. Dark mode gets the same hue lifted to L 0.72 — a dark brand
 // blue on a near-black ground is invisible (field run 2026-09-27).
 function writeBrand(value) {
   const [L, C, H] = value.match(/[\d.]+/g).map(Number)
+  if (snap.tint === undefined) snap.tint = false
   const dark = `oklch(${Math.max(L, 0.72).toFixed(3)} ${Math.min(C, 0.14).toFixed(3)} ${H})`
   const set = (v) => { const fg = +v.match(/[\d.]+/)[0] > 0.62 ? 'oklch(0.145 0 0)' : 'oklch(0.985 0 0)'
     return { '--primary': v, '--primary-foreground': fg, '--ring': v, '--chart-1': v, '--sidebar-primary': v, '--sidebar-primary-foreground': fg } }
   let css = readFileSync(cssPath, 'utf8')
   css = css.replace(/(:root|\.dark)\s*\{([^}]*)\}/g, (all, sel, body) => { const vals = set(sel === '.dark' ? dark : value)
-    return `${sel} {${body.replace(/(--[\w-]+)\s*:\s*([^;]+);/g, (d, k) => k in vals ? `${k}: ${vals[k]};` : d)}}` })
+    return `${sel} {${body.replace(/(--[\w-]+)\s*:\s*([^;]+);/g, (d, k, v) => k in vals ? `${k}: ${vals[k]};` : snap.tint ? tintNeutral(sel, k, v, H, d) : d)}}` })
   writeFileSync(cssPath, css)
+}
+
+// Marketing only. His accepted FastWay page (2026-09-16, measured) paints a pale ground in the brand's hue
+// (oklch 0.950 0.015 242 under the hero, 0.981 0.005 248 elsewhere), white cards on it, navy ink — and the
+// sky in the hero photo sits in the same hue, so the photo belongs to the page. The build he rejected on
+// 2026-09-27 used the preset's pure greys: «цвета не подходят, картинка не сливается с background».
+// Every ground here stays below C 0.02, under check.mjs's calibrated ground-tint cap.
+function tintNeutral(sel, k, v, H, orig) {
+  const m = /^oklch\(\s*([\d.]+)\s+0\s+0\s*(\/[^)]*)?\)$/.exec(v.trim())
+  if (!m) return orig
+  let L = +m[1], C
+  const alpha = m[2] ? ` ${m[2]}` : ''
+  if (sel === ':root') {
+    if (k === '--background') { L = 0.962; C = 0.012 }
+    else if (/^--(card|popover)$/.test(k)) { L = 0.995; C = 0.004 }
+    // Mid-tone text drops to L 0.50: the preset's 0.556 grey is 4.5:1 on white, not on a tinted ground.
+    else if (L < 0.35) { L = Math.max(L, 0.24); C = 0.06 }   // ink becomes the brand's navy, as on his page
+    else if (L < 0.75) { L = Math.min(L, 0.5); C = 0.03 }
+    else C = 0.016
+  } else C = alpha ? 0 : L < 0.35 ? 0.02 : 0.03
+  if (!C) return orig
+  return `${k}: oklch(${L.toFixed(3)} ${C.toFixed(3)} ${H})${alpha};`
 }
 
 // A sans family only: a serif on an app surface is what lint.mjs exists to refuse, and the preset's

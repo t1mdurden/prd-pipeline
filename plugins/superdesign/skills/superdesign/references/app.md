@@ -4,7 +4,9 @@ The owner's hired desk went through three builds on 2026-09-27. The first two we
 rejected («очень такой себе», «выглядит очень дешево»). The third, `dashboard-01` with its demo parts
 removed — inset sidebar, site header, four metric cards, a 90-day area chart, tabbed lists — on the
 preset's neutral palette with Onest for Cyrillic, is the one he accepted. Start there unless the brief
-says otherwise.
+says otherwise. v3's first field run confirmed it («hired desk — хорошо»), and in the picker he chose
+the variant with **sidebar-07's icon-collapsible sidebar** over dashboard-01's own inset one («лучше 2»):
+the default shell is dashboard-01's page with `base.mjs add sidebar-07 --overwrite` for the sidebar.
 
 ## Which base for which need
 
