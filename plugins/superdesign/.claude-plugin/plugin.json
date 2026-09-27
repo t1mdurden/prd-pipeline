@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "superdesign",
   "displayName": "superdesign",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Build or restyle React + Tailwind v4 + shadcn/ui screens by assembling installed blocks (official shadcn + free shadcnblocks), letting the owner pick between live variants, and probing the result for defects (runtime errors, axe, 390px overflow, brief-declared hero imagery, logos and forms, brand-colour wash). Never invents a design system; never grades taste with a model.",
   "author": {
     "name": "Timmy-Lane",
