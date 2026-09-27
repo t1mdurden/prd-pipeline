@@ -1,0 +1,12 @@
+{
+ "name": "section-cards",
+ "type": "registry:block",
+ "files": [
+  {
+   "path": "registry/radix-vega/blocks/section-cards/page.tsx",
+   "type": "registry:page",
+   "target": "components/section-cards.tsx",
+   "content": "import { Button } from \"@/registry/radix-vega/ui/button\"\nexport function SectionCards() {\n  return <div className=\"grid gap-4\"><Button>Open</Button></div>\n}\n"
+  }
+ ]
+}

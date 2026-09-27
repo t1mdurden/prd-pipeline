@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "superdesign",
   "displayName": "superdesign",
-  "version": "0.2.0",
-  "description": "Design and build brand-specific UI with React 19 + Tailwind v4 + shadcn/ui through a system-first workflow: brand -> art-direction brief -> OKLCH tokens -> a vetted pattern cookbook -> polish -> anti-slop, accessibility and rendered-geometry gates that exit non-zero. Includes reference mining: measure a real product's design and prove your output differentiated from it. A design-system generator rather than a fixed theme, aimed at output that looks deliberately designed instead of AI-generated.",
+  "version": "0.3.0",
+  "description": "Build or restyle React + Tailwind v4 + shadcn/ui screens by assembling installed blocks (official shadcn + free shadcnblocks), letting the owner pick between live variants, and probing the result for defects (runtime errors, axe, 390px overflow, brief-declared hero imagery, logos and forms, brand-colour wash). Never invents a design system; never grades taste with a model.",
   "author": {
     "name": "Timmy-Lane",
     "url": "https://github.com/Timmy-Lane"
@@ -16,8 +16,9 @@
     "design-system",
     "tailwind",
     "shadcn",
-    "oklch",
     "accessibility",
-    "frontend"
+    "frontend",
+    "blocks",
+    "registry"
   ]
 }

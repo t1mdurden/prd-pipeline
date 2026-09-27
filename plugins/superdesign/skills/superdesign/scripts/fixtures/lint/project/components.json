@@ -1,0 +1,1 @@
+{ "style": "radix-vega", "tailwind": { "css": "src/index.css" }, "aliases": { "components": "@/components", "ui": "@/components/ui" }, "registries": {} }
