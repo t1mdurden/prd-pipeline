@@ -34,20 +34,29 @@ case study) → pricing if he sells plans → CTA or contact form → footer. Ev
 
 ## Logos, brand, copy
 
-- Client logos only from `ASSETS: client-logos:`. None → cut the logo section; never render placeholder
-  brands or names set as text.
+- Client logos only from `ASSETS: client-logos:`, and only after you looked at each file: in the first
+  field run two of four "logos" were page screenshots and one a 40px Instagram icon. Crop a clean mark
+  if the file allows, otherwise ask. None → cut the logo section; never placeholder brands or names
+  set as text.
 - `node $SD/base.mjs brand "oklch(...)"` with the colour his logo already uses. The brand hue belongs to
   the primary button, links and small accents; `check.mjs` fails a page whose light backgrounds carry
   it on more than 12% of painted area (his rejected fastway build: 45%; 18 peers: at most 4.5%).
-- Copy comes from the brief and from him. No invented metrics, testimonials, client names or awards —
-  ask, or leave the section out.
+- Copy comes from the brief and from him. No invented metrics, testimonials, client names, awards or
+  certifications (GDP, ATP, "logger on every truck") — a claim the business has not confirmed stays off
+  the page; ask, or leave it out.
 
 ## Conversion
 
 `CONVERSION: form` → a real form block (`catalog.mjs search contact form`), fields labelled, wired to
-where he receives leads. `call` → a visible `tel:` link. `check.mjs --brief` checks both.
+where he receives leads. Free contact blocks ship a demo submit (`contact2`: `console.log`, a 1 s wait,
+a fake "sent") — replace it with his endpoint, or a `mailto:` fallback, and write which one into the
+`CONVERSION:` line. The probe only sees that a form exists. `call` → a visible `tel:` link.
 
-## Free blocks that break in Vite
+## Free blocks that break in Vite and Tailwind v4
+
+- Their sections use `container` the v3 way (centred, padded); `base.mjs add` appends the `@utility
+  container` that restores it the first time an `@shadcnblocks/` block arrives.
+- `timeline9` puts a `Separator` inside its `<ol>` (axe `list`) and draws its line at zero height.
 
 - `@shadcnblocks/logos3` (and other marquee logos): `react-fast-marquee`'s default import resolves to
   an object and white-screens the whole page. Use a static logo row (`logos8`, `logos18`) or import it as

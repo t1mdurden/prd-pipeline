@@ -91,7 +91,7 @@ function search() {
   const words = []
   for (let i = 1; i < args.length; i++) {
     if (args[i] === '--surface' || args[i] === '--limit') i++
-    else if (!args[i].startsWith('--')) words.push(args[i].toLowerCase())
+    else if (!args[i].startsWith('--')) words.push(...args[i].toLowerCase().split(/\s+/).filter(Boolean))   // "contact form" quoted = two words
   }
   if (!words.length) { console.error('usage: catalog.mjs search <words...> [--surface app|marketing] [--image] [--paid] [--limit N]'); process.exit(64) }
   const { meta, items } = JSON.parse(readFileSync(DATA, 'utf8'))

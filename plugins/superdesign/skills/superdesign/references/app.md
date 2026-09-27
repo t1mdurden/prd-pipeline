@@ -1,8 +1,10 @@
 # App surfaces — assembling from blocks
 
-The one build the owner accepted for a work tool (hired desk, 2026-09-27): `dashboard-01` with its demo
-parts removed — inset sidebar, site header, four metric cards, a 90-day area chart, tabbed lists —
-on the preset's neutral palette, with Onest for Cyrillic. Start there unless the brief says otherwise.
+The owner's hired desk went through three builds on 2026-09-27. The first two were hand-built and
+rejected («очень такой себе», «выглядит очень дешево»). The third, `dashboard-01` with its demo parts
+removed — inset sidebar, site header, four metric cards, a 90-day area chart, tabbed lists — on the
+preset's neutral palette with Onest for Cyrillic, is the one he accepted. Start there unless the brief
+says otherwise.
 
 ## Which base for which need
 
@@ -11,11 +13,11 @@ on the preset's neutral palette, with Onest for Cyrillic. Start there unless the
 | the whole shell of a working tool | `dashboard-01` | sidebar (inset) + header + cards + chart + table; the default |
 | shell, navigation-heavy | `sidebar-07` (collapses to icons), `sidebar-08` (inset + secondary nav), `sidebar-03` (submenus) | pair with your own content area built from the parts below |
 | metric row | `dashboard-01`'s `section-cards.tsx` | copy its anatomy for every KPI |
-| time series, other charts | `dashboard-01`'s `chart-area-interactive.tsx`; `catalog.mjs search chart --surface app` (free `chart-card`/`chart-group` blocks); or the `chart` primitive with a Recharts type | charts use `--chart-1…5`; the brand lands on `--chart-1`. shadcn's 69 chart examples live only in the `new-york-v4` registry: installing one by URL into a 2026-style project overwrites `ui/chart.tsx` with another style's version |
-| list / records | `dashboard-01`'s `data-table.tsx` (tabs, column toggle, drag rows) or `@shadcnblocks/data-table1` (sortable) | tabs over tables was the accepted desk's pattern |
+| time series, other charts | `dashboard-01`'s `chart-area-interactive.tsx` — with `BRAND: none`, the neutral presets' `--chart-1` is a pale grey on white: draw one series at a time in `--primary` with a switcher, not three greys at once; `catalog.mjs search chart --surface app` (free `chart-card`/`chart-group` blocks); or the `chart` primitive with a Recharts type | charts use `--chart-1…5`; the brand lands on `--chart-1`. shadcn's 69 chart examples live only in the `new-york-v4` registry: installing one by URL into a 2026-style project overwrites `ui/chart.tsx` with another style's version |
+| list / records | `dashboard-01`'s `data-table.tsx` (tabs, column toggle, drag rows) | tabs over tables was the accepted desk's pattern. It is `@tanstack/react-table` **v9**; shadcnblocks `data-table*` blocks are v8 code — installing one next to dashboard-01 gives ~50 type errors. Use them only in a project without dashboard-01 |
 | settings / profile form | `@shadcnblocks/settings-profile1`, then shadcn `field` for more fields | |
 | sign-in | `login-03`/`login-04`, `signup-0N` | |
-| empty, loading, spinner | shadcn `empty`, `skeleton`, `spinner` components | every data region has all three states |
+| empty, loading, spinner | shadcn `empty`, `skeleton`, `spinner` components | fetched data has all three states; a static JSON import has only the empty one |
 
 ## The anatomy that makes dashboard-01 look finished — keep it when adapting
 
@@ -49,6 +51,13 @@ on the preset's neutral palette, with Onest for Cyrillic. Start there unless the
 - `SidebarInset` already renders `<main>`; a page component with its own `<main>` is a duplicate
   landmark that axe's serious/critical filter does not report.
 - Radix builds ids from a tab's `value`; a value with spaces or commas makes an invalid
-  `aria-controls`. Use slug values (`value="replied"`), put the words in the trigger.
+  `aria-controls`. Use slug values (`value="replied"`), put the words in the trigger. A `TabsList` used
+  as a filter with no `TabsContent` points `aria-controls` at nothing (axe `aria-valid-attr-value`):
+  render the filtered content inside `TabsContent`.
+- A sidebar variant on a dashboard-01 clone: `base.mjs add sidebar-07 --overwrite` replaces the shared
+  sidebar files; its page lands in `src/pages/sidebar-07.tsx` (dashboard-01 already owns
+  `app/dashboard/page.tsx`) — render that page, or the variant differs only in its sidebar.
+- `CONVERSION: form` on an app means "he sets values here"; `check.mjs` accepts any live control
+  (select, switch, checkbox, input) — no `<form>` wrapper needed.
 - Local tools with Russian UI: set `lang="ru"` on `<html>`, and give the font a Cyrillic subset
   (`base.mjs font "Onest Variable" @fontsource-variable/onest`).

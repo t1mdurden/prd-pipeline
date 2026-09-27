@@ -11,10 +11,16 @@ if [ "$c" -eq 69 ]; then echo "BLOCKED  playwright/axe-core not resolvable from 
 
 node "$S" "file://$H/broken.html" --brief "$H/broken.md" --out "$T/b" > "$T/broken.txt" 2>&1; b=$?
 [ "$b" -ge 1 ] && [ "$b" -le 63 ] && ok "broken page exits $b (defects)" || no "broken page exits $b — expected 1–63"
-for cls in runtime: void: overflow: leftovers: axe: hero: form: ground:; do
+for cls in runtime: void: clip: overflow: leftovers: axe: hero: form: ground:; do
   grep -q "$cls" "$T/broken.txt" && ok "broken page reports $cls" || no "broken page does not report $cls"
 done
 
+node "$S" "file://$H/broken-asset.html" --out "$T/a" > "$T/asset.txt" 2>&1
+grep -q "runtime: asset" "$T/asset.txt" && ok "a missing image is a defect" || { no "a missing image went unreported"; cat "$T/asset.txt"; }
+node "$S" "file://$H/app.html" --brief "$H/app.md" --out "$T/app" > "$T/app.txt" 2>&1; e=$?
+[ "$e" -eq 0 ] && ok "app surface: a live select satisfies CONVERSION form" || { no "app surface with a select exits $e"; cat "$T/app.txt"; }
+(cd "$H/other" && node "$S" "file://$H/clean.html" --out "$T/o" > "$T/other.txt" 2>&1); e=$?
+[ "$e" -eq 67 ] && ok "a page whose title is not this project's exits 67" || { no "foreign page exits $e"; cat "$T/other.txt"; }
 node "$S" "http://127.0.0.1:9/" > "$T/dead.txt" 2>&1; d=$?
 [ "$d" -eq 67 ] && ok "unreachable page exits 67, not clean" || no "unreachable page exits $d"
 

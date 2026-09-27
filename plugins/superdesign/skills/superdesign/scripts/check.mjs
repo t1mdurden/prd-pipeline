@@ -6,11 +6,13 @@
 //   node check.mjs --ground-card <card.json>        the ground-tint cap alone, on a measured card
 //
 // Per viewport (1440×900, 390×844) and scheme (light, dark):
-//   runtime   page errors and console errors (a vendor block can white-screen the whole page)
+//   runtime   page errors, console errors, and any asset that answers 4xx/5xx (a /public path the
+//             build broke looks like an empty hero, not like an error)
 //   void      a page that rendered nothing, or text sections left at opacity 0 (reveal-on-scroll)
 //   axe       serious + critical violations
 //   overflow  horizontal scroll at 390px
 //   leftovers vendor demo content that survived: shadcnblocks image CDN, "Acme Inc.", m@example.com …
+//   clip      at 1440, a container that scrolls sideways (a table column cut off inside overflow-x-auto)
 // With --brief (the project's DESIGN.md):
 //   hero      every HERO-VISUAL asset renders inside the first viewport at 1440 AND 390
 //   assets    every ASSETS path renders somewhere on the page
@@ -18,7 +20,10 @@
 // Always, at 1440 light:
 //   ground    light chromatic ground ≤ 12% of painted area (see groundTint below)
 //
-// Exit: 0 clean · 1–63 number of defects · 64 usage · 67 page unreachable · 69 dependency missing ·
+// Before anything, the page must be THIS project: when ./index.html exists, the served <title> must match
+// it — a field run once probed another app that held the port and called it clean.
+//
+// Exit: 0 clean · 1–63 number of defects · 64 usage · 67 page unreachable or not this project · 69 dependency missing ·
 //       70 the probe itself crashed (never read that as a defect count, never as clean).
 import { readFileSync, existsSync, mkdirSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -59,7 +64,8 @@ if (args[0] === '--ground-card') {
 
 const url = args.find(a => /^(https?|file):/.test(a))
 if (!url) { console.error('usage: check.mjs <url> [--brief DESIGN.md] [--out dir] | --ground-card <card.json>'); process.exit(64) }
-const outDir = opt('--out', '.superdesign/shots')
+// One directory per URL, so probing a variant never overwrites the main page's shots.
+const outDir = opt('--out', join('.superdesign', 'shots', url.replace(/^\w+:\/+/, '').replace(/[^\w.-]+/g, '_').replace(/_+$/, '') || 'page'))
 const briefPath = opt('--brief', null)
 
 // ---------------------------------------------------------------------------------------------
@@ -101,6 +107,7 @@ function readBrief(p) {
   }
 }
 const brief = readBrief(briefPath)
+const expectTitle = existsSync('index.html') && !opt('--any-title') ? (readFileSync('index.html', 'utf8').match(/<title>([^<]*)<\/title>/) || [])[1]?.trim() : null
 
 const LEFTOVERS = [/deifkwefumgah\.cloudfront\.net/, /shadcnblocks\.com/i, /\bAcme Inc\b/, /m@example\.com/,
   /github\.com\/shadcn\.png/, /i\.pravatar\.cc/, /lorem ipsum/i]
@@ -117,13 +124,20 @@ try {
     const page = await ctx.newPage()
     const errors = []
     page.on('pageerror', e => errors.push(e.message.split('\n')[0]))
-    page.on('console', m => { if (m.type() === 'error') errors.push(m.text().split('\n')[0]) })
+    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text().split('\n')[0]) })
+    page.on('response', r => { if (r.status() >= 400) errors.push(`asset ${r.status()}: ${r.url()}`) })
+    page.on('requestfailed', r => { if (!/favicon/.test(r.url())) errors.push(`asset failed: ${r.url()}`) })
     try { await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 }) }
     catch (e) { console.error(`✗ cannot load ${url}: ${e.message.split('\n')[0]}`); process.exit(67) }
     await page.waitForTimeout(600)
+    if (expectTitle && (await page.title()).trim() !== expectTitle) {
+      console.error(`✗ ${url} serves "${await page.title()}", but ./index.html says "${expectTitle}" — that is another app on this port. Start this project with --strictPort on a free port.`)
+      process.exit(67)
+    }
     await page.screenshot({ path: join(outDir, `${w}-${scheme}.png`) })
+    if (scheme === 'light') await page.screenshot({ path: join(outDir, `${w}-full.png`), fullPage: true })
 
-    for (const e of [...new Set(errors)].slice(0, 3)) fail(where, `runtime: ${e.slice(0, 160)}`)
+    for (const e of [...new Set(errors)].slice(0, 4)) fail(where, `runtime: ${e.slice(0, 180)}`)
 
     // Scroll the whole page once so reveal-on-scroll gets its chance, then look for what stayed hidden.
     const probe = await page.evaluate(async ({ vh }) => {
@@ -136,16 +150,22 @@ try {
         const s = getComputedStyle(el), r = el.getBoundingClientRect()
         return +s.opacity === 0 && r.height > 100 && el.innerText.trim().length > 40 && s.visibility !== 'hidden'
       }).length
-      return { text, media, hidden, overflow: document.documentElement.scrollWidth - window.innerWidth, html: document.documentElement.outerHTML }
+      const clipped = [...document.querySelectorAll('*')].filter(el => {
+        const st = getComputedStyle(el).overflowX
+        return (st === 'auto' || st === 'scroll') && el.scrollWidth - el.clientWidth > 4 && el.clientWidth > 200
+      }).map(el => el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 3).join('.') : '')).slice(0, 3)
+      return { text, media, hidden, clipped, overflow: document.documentElement.scrollWidth - window.innerWidth, html: document.documentElement.outerHTML }
     }, { vh: h })
     if (probe.text < 20 && probe.media === 0) fail(where, 'void: the page rendered nothing')
     if (probe.hidden) fail(where, `void: ${probe.hidden} text block(s) still at opacity 0 after a full scroll (reveal with no fallback)`)
     if (w === 390 && probe.overflow > 0) fail(where, `overflow: page scrolls ${probe.overflow}px sideways`)
+    if (w === 1440) for (const c of probe.clipped) fail(where, `clip: ${c} scrolls sideways at desktop width — a column is cut off`)
     if (w === 1440 && scheme === 'light') for (const re of LEFTOVERS) if (re.test(probe.html)) fail(where, `leftovers: vendor demo content still on the page (${re.source})`)
 
     await page.addScriptTag({ content: axeSource })
     const ax = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
-      .filter(v => v.impact === 'serious' || v.impact === 'critical').map(v => `${v.id} ×${v.nodes.length}`))
+      .filter(v => v.impact === 'serious' || v.impact === 'critical')
+      .map(v => `${v.id} ×${v.nodes.length} at ${v.nodes.slice(0, 2).map(n => n.target.join(' ')).join(' | ')}`))
     for (const v of ax) fail(where, `axe: ${v}`)
 
     if (brief && !brief.heroNone && brief.hero.length && scheme === 'light') {
@@ -162,11 +182,13 @@ try {
         return [el.currentSrc, el.src, el.getAttribute?.('href'), el.getAttribute?.('srcset'), bg !== 'none' ? bg : ''].filter(Boolean)
       }).join(' '))
       for (const a of brief.assets) if (!all.includes(basename(a))) fail(where, `assets: ${basename(a)} is declared but never rendered`)
-      const conv = await page.evaluate(() => ({
-        form: [...document.querySelectorAll('form')].some(f => f.getBoundingClientRect().height > 0 && f.querySelector('input,textarea,select')),
+      const conv = await page.evaluate(app => ({
+        // On an app surface "form" means he sets values here; any live control counts. On marketing it is a lead form.
+        form: app ? [...document.querySelectorAll('input,select,textarea,[role=combobox],[role=switch],[role=checkbox],[role=radio]')].some(e => e.getBoundingClientRect().height > 0 && !e.disabled)
+          : [...document.querySelectorAll('form')].some(f => f.getBoundingClientRect().height > 0 && f.querySelector('input,textarea,select')),
         tel: !!document.querySelector('a[href^="tel:"]'),
-      }))
-      if (brief.conversion === 'form' && !conv.form) fail(where, 'form: CONVERSION is form and no visible form with a field was rendered')
+      }), brief.surface?.startsWith('app'))
+      if (brief.conversion === 'form' && !conv.form) fail(where, brief.surface?.startsWith('app') ? 'form: CONVERSION is form and the page has no live control he can set' : 'form: CONVERSION is form and no visible form with a field was rendered')
       if (brief.conversion === 'call' && !conv.tel) fail(where, 'form: CONVERSION is call and there is no tel: link')
     }
     if (w === 1440 && scheme === 'light') {

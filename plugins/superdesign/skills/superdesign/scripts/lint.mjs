@@ -11,7 +11,7 @@
 //   hand-built  app surface: no route renders an installed block — the page was written from scratch
 //   raw-colour  Tailwind palette classes (bg-blue-500) in files you wrote or edited; use tokens/Badge
 //
-// Exit: 0 clean · 1–63 defects · 3 no base.json or no SURFACE line · 64 usage · 70 crashed.
+// Exit: 0 clean · 1–63 defects · 64 usage · 65 no base.json or no SURFACE line · 70 crashed.
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, dirname, resolve } from 'node:path'
@@ -20,11 +20,11 @@ process.on('uncaughtException', e => { console.error(`✗ lint.mjs crashed: ${e.
 
 const ROOT = resolve(process.argv[2] || '.')
 const SNAP = join(ROOT, '.superdesign', 'base.json')
-if (!existsSync(SNAP)) { console.error('✗ no .superdesign/base.json — nothing came through base.mjs, so every component here was written by hand'); process.exit(3) }
+if (!existsSync(SNAP)) { console.error('✗ no .superdesign/base.json — nothing came through base.mjs, so every component here was written by hand'); process.exit(65) }
 const snap = JSON.parse(readFileSync(SNAP, 'utf8'))
 const designMd = ['DESIGN.md', 'design/DESIGN.md'].map(p => join(ROOT, p)).find(existsSync)
 const surfaceLine = designMd && (readFileSync(designMd, 'utf8').match(/^SURFACE:\s*(.+)$/m) || [])[1]
-if (!surfaceLine) { console.error('✗ no "SURFACE: app|marketing|component" line in DESIGN.md — the surface decides which rules apply'); process.exit(3) }
+if (!surfaceLine) { console.error('✗ no "SURFACE: app|marketing|component" line in DESIGN.md — the surface decides which rules apply'); process.exit(65) }
 const surface = surfaceLine.trim().split(/\s/)[0].toLowerCase()   // "app (restyle)" is an app
 const cfg = JSON.parse(readFileSync(join(ROOT, 'components.json'), 'utf8'))
 const cssPath = join(ROOT, cfg.tailwind?.css || 'src/index.css')
@@ -96,7 +96,7 @@ if (surface === 'app') {
   if (!entries.length) fail('hand-built', 'no entry found (src/main.tsx or app/**/page.tsx) — cannot tell what renders')
 }
 
-const RAW = /\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|divide|decoration|shadow|accent|caret)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/
+const RAW = /\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|divide|decoration|shadow|accent|caret)-(?:(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}|white|black)\b/
 for (const p of files.filter(f => /\.(tsx|jsx)$/.test(f) && !rel(f).includes('components/ui/'))) {
   if (untouched(p)) continue   // vendor block as installed: its classes are the vendor's choice
   const m = readFileSync(p, 'utf8').match(RAW)

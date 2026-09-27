@@ -60,8 +60,10 @@ PICKED:       variant name, who picked, date   |   unattended default
 ```
 
 Ask him for what the brief cannot know: the logo and brand colour the business already owns, the
-photos, who converts how. **Done when** every line has a value, and every `UNAVAILABLE`/`none` names
-who said so. Only the owner may say `HERO-VISUAL: none`.
+photos, who converts how. Then **open every asset you were given** (Read the image): a "logo" that is a
+page screenshot or a 40px icon, or a hero photo of the wrong service, is a question for him, not a file
+to place — no probe can see what a picture shows. **Done when** every line has a value, every asset was
+looked at, and every `UNAVAILABLE`/`none` names who said so. Only the owner may say `HERO-VISUAL: none`.
 
 ### 3. Bases
 
@@ -74,16 +76,21 @@ node $SD/catalog.mjs search hero split image --surface marketing --image
 
 Free items print their install id (`dashboard-01`, `@shadcnblocks/hero1`). shadcnblocks ids need
 `"registries": { "@shadcnblocks": "https://www.shadcnblocks.com/r/{name}" }` in `components.json`.
-Nothing fits → `npx shadcn@latest search -q <word>` across configured registries, then widen the words.
+Nothing fits → widen the words, then `npx shadcn@latest search -q <word>`; that search does not mark
+paid items, so check a shadcnblocks hit first (`curl -s -o /dev/null -w '%{http_code}'
+https://www.shadcnblocks.com/r/<name>` → 401 is Pro).
 **Done when** every region in `BASE:` names an id, or says `no block — searched: <words>`; only those
 regions may be written by hand.
 
 ### 4. Picker — he chooses before features exist
 
+First a thin pass of his content into the default base — his nav labels, his real numbers or sample
+data in his language, his photos — so he compares his product, not a revenue demo. Then:
+
 ```bash
-node $SD/variants.mjs clone shell table          # 2–3 variants of the scaffold
-cd .superdesign/variants/table && node $SD/base.mjs add <other base> && …   # make each one different
-node $SD/variants.mjs serve                      # one variant full-size at a time, keys 1–3 flip
+node $SD/variants.mjs clone shell table          # 2–3 copies of that first pass
+cd .superdesign/variants/table && node $SD/base.mjs add sidebar-07 --overwrite && …   # make each one different
+node $SD/variants.mjs serve                      # each variant on its own port, keys 1–3 flip
 ```
 
 Variants differ where it shows. **App**: composition — dashboard-01's inset shell · a sidebar-NN shell ·
@@ -92,8 +99,9 @@ was already his own pick of a direction. **Marketing**: the hero block and the p
 one-line "wins when / costs" and send him the URL plus `serve --shots` screenshots. His pick →
 `variants.mjs keep <name>`, `PICKED:` in DESIGN.md.
 
-**Unattended** (nobody to ask): skip the picker, take `vega` + `dashboard-01` (app) or `nova` + the
-first `--image` hero (marketing), write `PICKED: unattended default`. The run then ends UNPROVEN.
+**Unattended** (nobody to ask): build on `vega` + `dashboard-01` (app) or `nova` + the first `--image`
+hero (marketing) and write `PICKED: unattended default`; still leave `serve --shots` screenshots of 2–3
+variants for him to choose from later. The run ends UNPROVEN.
 
 Presets: `vega` clean neutral · `nova` tighter padding · `mira` compact · `maia` rounded, generous ·
 `luma` soft · `rhea` luma-compact — all fine for `app`. `lyra` (boxy, mono) and `sera` (editorial,
@@ -120,20 +128,24 @@ both in [craft.md](references/craft.md).
 ### 6. Probe
 
 ```bash
+npx vite --port <free port> --strictPort &               # other projects hold 5173; use the URL it prints
 node $SD/lint.mjs                                        # ui-fork · theme · serif · radius-0 · hand-built · raw-colour
-node $SD/check.mjs http://localhost:5173/ --brief DESIGN.md   # runtime · void · axe · overflow · leftovers · hero · assets · form · ground
+node $SD/check.mjs http://localhost:<port>/ --brief DESIGN.md   # runtime · void · clip · axe · overflow · leftovers · hero · assets · form · ground
 npx tsc -b                                               # blocks ship unused imports that vite build ignores
 ```
 
-Every route gets a `check.mjs` run. **Done when** all three exit 0. Exit codes are not interchangeable:
-`1–63` defects to fix · `3` no base or no SURFACE · `67` page unreachable · `69` a dependency is
-missing · `70` the script crashed — read the message, never read 70 as a count or as clean. A defect
-you judge wrong is still fixed or argued in DESIGN.md, never silenced by editing the script.
+Every route gets a `check.mjs` run; each URL writes its own `.superdesign/shots/<url>/`, viewport and
+full-page. **Done when** all three exit 0. Exit codes: `1–63` defects to fix · `64` usage · `65` no base
+or no SURFACE · `67` unreachable, or the port serves another app (its `<title>` ≠ `./index.html`'s) ·
+`69` a dependency is missing · `70` the script crashed — never read 67/69/70 as a count or as clean.
+Then read the full-page shots yourself: clipped labels, wrapping numbers, a chart you cannot read — the
+probes do not see those. A defect you judge wrong is fixed or argued in DESIGN.md, never silenced by
+editing the script.
 
 ### 7. Show him
 
-Send the screenshots `check.mjs` wrote to `.superdesign/shots/` (1440 and 390, light and dark) and the
-running URL. **Done means he said yes.** Probes at 0 mean "no defects found", nothing more. Unattended
+Send the screenshots `check.mjs` wrote under `.superdesign/shots/` (full-page at 1440 and 390, and
+the dark viewports) plus the picker shots, and the running URL. **Done means he said yes.** Probes at 0 mean "no defects found", nothing more. Unattended
 or not yet seen: report UNPROVEN and what he needs to look at.
 
 In the superdesign repo itself, every real run gets an entry in `evals/field-runs/` the same day.

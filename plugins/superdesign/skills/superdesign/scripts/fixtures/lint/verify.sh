@@ -22,8 +22,13 @@ fresh raw;        printf 'export const S = () => <span className="text-emerald-6
 fresh brand;      (cd "$W" && node "$S/base.mjs" brand "oklch(0.52 0.12 170)" >/dev/null);             expect brand clean
 fresh brandhand;  (cd "$W" && node "$S/base.mjs" brand "oklch(0.52 0.12 170)" >/dev/null); sed -i '' 's/--ring: oklch(0.52 0.12 170);/--ring: oklch(0.6 0.2 30);/' "$W/src/index.css"; expect brandhand theme
 fresh font;       (cd "$W" && node "$S/base.mjs" font "Onest" >/dev/null);                           expect font clean
+fresh white;      printf 'export const T = () => <div className="bg-white">x</div>\n' > "$W/src/components/tile.tsx"; expect white raw-colour
+fresh darkbrand;  (cd "$W" && node "$S/base.mjs" brand "oklch(0.41 0.10 250)" >/dev/null)
+if awk '/^\.dark/,/}/' "$W/src/index.css" | grep -q -- '--primary: oklch(0.720'; then echo "PASS  brand lifts the .dark primary to L 0.72"; else echo "FAIL  .dark primary not lifted"; fail=$((fail+1)); fi
+fresh fontclean;  (cd "$W" && node "$S/base.mjs" font "Onest Variable" >/dev/null)
+grep -q 'fontsource-variable/inter' "$W/src/index.css" && { echo "FAIL  the replaced font's import is still there"; fail=$((fail+1)); } || echo "PASS  base.mjs font drops the unused Inter import"
 fresh mkt;        printf 'SURFACE: marketing\n' > "$W/DESIGN.md"; sed -i '' "s/'Inter Variable', sans-serif/'Fraunces', serif/" "$W/src/index.css"; expect mkt theme
 W="$T/nobase"; cp -R "$H/project" "$W"; (cd "$W" && node "$S/lint.mjs" >/dev/null 2>&1); e=$?
-[ "$e" -eq 3 ] && echo "PASS  no base.json → exit 3" || { echo "FAIL  no base.json → exit $e"; fail=$((fail+1)); }
+[ "$e" -eq 65 ] && echo "PASS  no base.json → exit 65" || { echo "FAIL  no base.json → exit $e"; fail=$((fail+1)); }
 [ "$fail" -eq 0 ] && echo "✓ lint.mjs: all green" || echo "✗ lint.mjs: $fail failing"
 exit "$fail"

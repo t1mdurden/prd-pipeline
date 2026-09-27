@@ -48,24 +48,41 @@ else usage()
 
 function usage() { console.error('usage: base.mjs add <ids...> | apply <preset> | brand <oklch> | font "<Family>" [pkg] | recover <item.json> | status'); process.exit(64) }
 
+// stdin is closed on purpose: an overwrite prompt then aborts instead of hanging, and we say so —
+// shadcn itself exits 0 after writing nothing.
 function shadcn(argv) {
-  const r = spawnSync('npx', ['-y', 'shadcn@latest', ...argv], { cwd: ROOT, stdio: 'inherit' })
+  const r = spawnSync('npx', ['-y', 'shadcn@latest', ...argv], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 64 << 20 })
+  const out = (r.stdout || '') + (r.stderr || '')
+  process.stdout.write(out.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').split('\n').filter(l => /✔|✗|Created|Updated|Skipped|error|Error|exists/i.test(l)).slice(0, 40).join('\n') + '\n')
   if (r.status !== 0) { console.error(`✗ npx shadcn ${argv.join(' ')} exited ${r.status}`); process.exit(66) }
+  const asked = [...out.matchAll(/The file (\S+) already exists/g)].map(m => m[1])
+  if (asked.length) {
+    console.error(`✗ shadcn stopped at an overwrite prompt (${asked.join(', ')}) and installed nothing further. Re-run with --overwrite to replace them — it replaces your edits to those files.`)
+    process.exit(66)
+  }
 }
 
-function add(ids) {
+function add(argv) {
+  const ids = argv.filter(a => !a.startsWith('--')), flags = argv.filter(a => a.startsWith('--'))
   if (!ids.length) usage()
   const before = hashTree()
-  shadcn(['add', ...ids, '-y'])
+  shadcn(['add', ...ids, '-y', ...flags])
   for (const id of ids) {
     const item = fetchItem(id)
     if (item) recoverPages(item)
+  }
+  // shadcnblocks sections are written for a `container` that centres and pads, as Tailwind v3 had it;
+  // v4's bare `container` is left-aligned with no gutter.
+  if (ids.some(i => i.startsWith('@shadcnblocks/'))) {
+    const css = readFileSync(cssPath, 'utf8')
+    if (!/@utility container/.test(css)) writeFileSync(cssPath, css + '\n@utility container {\n  margin-inline: auto;\n  padding-inline: 1rem;\n  @media (width >= 40rem) { padding-inline: 2rem; }\n}\n')
   }
   const after = hashTree()
   for (const [p, h] of Object.entries(after)) if (before[p] !== h) snap.files[p] = h
   snap.ids = [...new Set([...snap.ids, ...ids])]
   save()
   const got = Object.keys(after).filter(p => before[p] !== after[p])
+  if (!got.length) { console.error(`✗ ${ids.join(' ')}: nothing new was written (already installed identically, or the add failed quietly)`); process.exit(66) }
   console.log(`base: ${ids.join(' ')} → ${got.length} file(s) recorded in .superdesign/base.json`)
 }
 
@@ -87,7 +104,10 @@ function recoverPages(item) {
   const src = existsSync(join(ROOT, 'src')) ? 'src' : '.'
   for (const f of item.files ?? []) {
     if (f.type !== 'registry:page' || !f.content) continue
-    const target = join(ROOT, src, f.target || `pages/${item.name}.tsx`)
+    // Two blocks can claim the same target (dashboard-01 and sidebar-07 both ship app/dashboard/page.tsx);
+    // the second one lands in pages/<block>.tsx instead of being skipped.
+    let target = join(ROOT, src, f.target || `pages/${item.name}.tsx`)
+    if (existsSync(target)) target = join(ROOT, src, 'pages', `${item.name}.tsx`)
     if (existsSync(target)) continue
     const body = f.content
       .replace(/@\/registry\/[\w-]+\/blocks\/[\w-]+\/components\//g, '@/components/')
@@ -106,10 +126,11 @@ function apply(preset) {
   shadcn(['apply', preset, '-y'])
   snap.preset = JSON.parse(readFileSync(join(ROOT, 'components.json'), 'utf8')).style
   if (snap.brand) writeBrand(snap.brand)
+  if (snap.font) writeFont(snap.font)   // a preset brings its own font; his (Cyrillic) choice wins
   const now = hashTree()
   for (const p of Object.keys(now)) if (snap.files[p] || p.includes('components/ui/')) snap.files[p] = now[p]
   save()
-  console.log(`base: preset ${preset} applied (${snap.preset})${snap.brand ? `, brand ${snap.brand} re-applied` : ''}`)
+  console.log(`base: preset ${preset} applied (${snap.preset})${snap.brand ? `, brand ${snap.brand} re-applied` : ''}${snap.font ? `, font ${snap.font} kept` : ''}`)
 }
 
 function brand(value) {
@@ -120,13 +141,16 @@ function brand(value) {
   console.log(`base: brand ${value} → ${BRAND_KEYS.join(' ')}`)
 }
 
+// Light mode takes the brand as given. Dark mode gets the same hue lifted to L 0.72 — a dark brand
+// blue on a near-black ground is invisible (field run 2026-09-27).
 function writeBrand(value) {
-  const L = +value.match(/[\d.]+/)[0]
-  const fg = L > 0.62 ? 'oklch(0.145 0 0)' : 'oklch(0.985 0 0)'
-  const vals = { '--primary': value, '--primary-foreground': fg, '--ring': value, '--chart-1': value, '--sidebar-primary': value, '--sidebar-primary-foreground': fg }
+  const [L, C, H] = value.match(/[\d.]+/g).map(Number)
+  const dark = `oklch(${Math.max(L, 0.72).toFixed(3)} ${Math.min(C, 0.14).toFixed(3)} ${H})`
+  const set = (v) => { const fg = +v.match(/[\d.]+/)[0] > 0.62 ? 'oklch(0.145 0 0)' : 'oklch(0.985 0 0)'
+    return { '--primary': v, '--primary-foreground': fg, '--ring': v, '--chart-1': v, '--sidebar-primary': v, '--sidebar-primary-foreground': fg } }
   let css = readFileSync(cssPath, 'utf8')
-  css = css.replace(/(:root|\.dark)\s*\{([^}]*)\}/g, (all, sel, body) =>
-    `${sel} {${body.replace(/(--[\w-]+)\s*:\s*([^;]+);/g, (d, k) => k in vals ? `${k}: ${vals[k]};` : d)}}`)
+  css = css.replace(/(:root|\.dark)\s*\{([^}]*)\}/g, (all, sel, body) => { const vals = set(sel === '.dark' ? dark : value)
+    return `${sel} {${body.replace(/(--[\w-]+)\s*:\s*([^;]+);/g, (d, k) => k in vals ? `${k}: ${vals[k]};` : d)}}` })
   writeFileSync(cssPath, css)
 }
 
@@ -140,11 +164,19 @@ function font(family, pkg) {
   }
   let css = readFileSync(cssPath, 'utf8')
   if (pkg && !css.includes(`@import "${pkg}"`)) css = css.replace(/(@import "tailwindcss";\n)/, `$1@import "${pkg}";\n`)
-  css = css.replace(/(--font-sans\s*:\s*)[^;]+;/, `$1'${family}', sans-serif;`)
   writeFileSync(cssPath, css)
+  writeFont(family)
   snap.font = family
   save()
   console.log(`base: --font-sans → '${family}', sans-serif${pkg ? ` (${pkg} installed and imported)` : ''}`)
+}
+
+function writeFont(family) {
+  let css = readFileSync(cssPath, 'utf8').replace(/(--font-sans\s*:\s*)[^;]+;/, `$1'${family}', sans-serif;`)
+  // Drop @fontsource imports no --font-* value names any more (the preset's Inter/Geist after a swap).
+  const used = [...css.matchAll(/--font-[\w-]+\s*:\s*([^;]+);/g)].map(m => m[1].toLowerCase().replace(/[^a-z0-9]/g, '')).join(' ')
+  css = css.replace(/^@import "@fontsource(?:-variable)?\/([\w-]+)";\n/gm, (line, slug) => used.includes(slug.replace(/[^a-z0-9]/g, '')) ? line : '')
+  writeFileSync(cssPath, css)
 }
 
 export function themeVars(css) {
