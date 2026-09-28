@@ -7,11 +7,25 @@ What the owner has said about landing pages, in order of cost:
   family and typefaces, painted almost no colour on backgrounds, and put real photography and real
   client logos up front.
 
-So the block path here is a **hypothesis** the next field run tests; what is enforced is only what
-his verdicts back: the hero asset in the first viewport, declared assets rendered, a form when the page
-converts by form, and grounds that are not washed in the brand colour.
+**Measured twice now: blocks lose to his page.** The block-built reefer landing was rejected
+(2026-09-27, «оригинал лучше»), then rejected again after the brand-tint fix («все равно fastway лучше
+на оригинале»). The rule this skill committed to in advance (`evals/redesign/2026-09-27/DESIGN.md`):
+marketing starts from **a page he already approves**, not from a block catalog.
 
-## Page skeleton — adjust to the brief, keep the order's logic
+## Start from his reference page
+
+1. Ask which existing page is the reference: his live site, a page he built before, or a URL he names.
+   Unattended with none → say so in DESIGN.md (`REFERENCE: none — unattended`) and end UNPROVEN.
+2. Screenshot it at 1440 and 390 (`check.mjs <url> --any-title --out .superdesign/ref`) and read it:
+   its ground and ink colours, the header, how the hero frames the photo, card style, spacing, footer.
+   Write those into DESIGN.md under `REFERENCE:` as concrete values, not adjectives.
+3. Build the new page as the same system: same tokens, same header and footer, same hero framing, same
+   card anatomy. Blocks from the catalog are allowed only for a section the reference does not have,
+   and are then restyled to the reference's anatomy.
+4. Before showing him, put the reference and the build side by side (`variants.mjs` with the reference
+   as variant 1). The question he answers is "does this belong to the same site", not "is it good".
+
+## Page skeleton — only when there is no reference
 
 navbar → hero with a real visual → client logos → 2–3 feature sections → proof (testimonial, stats or
 case study) → pricing if he sells plans → CTA or contact form → footer. Every section:

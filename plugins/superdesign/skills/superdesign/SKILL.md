@@ -29,7 +29,7 @@ Decide it first; it picks the catalog and the rules.
 | Surface | What it is | Base comes from | Extra rules |
 |---|---|---|---|
 | `app` | internal tool, dashboard, admin, settings, CRUD, anything used daily | official shadcn blocks (dashboard-01, sidebar-01…16, login/signup) + free shadcnblocks app items (data tables, settings, chart cards) | sans only, radius > 0, a route must render an installed block — `lint.mjs` enforces all three · [app.md](references/app.md) |
-| `marketing` | landing page, company site, product page | free shadcnblocks marketing sections (hero, logos, feature, pricing, cta, contact, footer…) | photography placed in the hero, real logos, a form if it converts by form — `check.mjs --brief` enforces · [marketing.md](references/marketing.md) |
+| `marketing` | landing page, company site, product page | **a page he already approves** (his site or a URL he names), replicated; free shadcnblocks sections only for what it lacks | photography placed in the hero, real logos, a form if it converts by form — `check.mjs --brief` enforces · [marketing.md](references/marketing.md) |
 | `component` | one piece inside an existing product | the product's own components | match the product; no picker |
 
 **Restyle** is a mode, not a surface: an existing codebase keeps its components and routes, gets a
@@ -50,6 +50,7 @@ SURFACE:      app | marketing | component   [(restyle)]
 FOR:          who uses it, how often, on what screen
 BASE:         region → block id, one line per region (filled in step 3)
 PRESET:       vega | nova | mira | …      BRAND: oklch(L C H) or none      FONT: family or preset's
+REFERENCE:    url or path of the page he approves, with its measured values  (marketing only)
 HERO-VISUAL:  public/hero.jpg [public/…]  |  none — owner, <date>          (marketing only)
 ASSETS:
   logo:         public/logo.svg  |  UNAVAILABLE — asked <date>
